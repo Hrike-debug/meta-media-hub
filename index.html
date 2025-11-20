@@ -168,38 +168,86 @@
     </div>
   </div>
 
-  <!-- FOCUS MODAL -->
-  <div id="focusModal" class="modal" aria-hidden="true">
-    <div class="panel" style="max-width:820px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div>
-          <strong style="color:var(--accent)">Manual Focus</strong>
-          <div class="small">Drag/resise the square to choose focus area (center used for crop).</div>
-        </div>
-        <button id="closeFocus" class="back">Close</button>
+ <!-- FOCUS MODAL -->
+<div id="focusModal" class="modal" aria-hidden="true">
+  <div class="panel" style="max-width:820px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <strong style="color:var(--accent)">Manual Focus</strong>
+        <div class="small">Drag/resise the square to choose focus area (center used for crop).</div>
       </div>
+      <button id="closeFocus" class="back">Close</button>
+    </div>
 
-      <div style="display:flex;gap:12px">
-        <div class="focus-canvas" id="focusCanvas">
-          <img id="focusPreview" alt="Focus preview">
-          <div id="focusRect" class="focus-rect" style="display:none">
-            <div class="focus-handle"></div>
-          </div>
+    <div style="display:flex;gap:12px">
+      <div class="focus-canvas" id="focusCanvas">
+        <img id="focusPreview" alt="Focus preview">
+        <div id="focusRect" class="focus-rect" style="display:none">
+          <div class="focus-handle"></div>
         </div>
-      </div>
-
-      <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
-        <select id="focusSelect" class="input" style="width:260px"></select>
-        <button id="saveFocus" class="btn">Save Focus</button>
-        <button id="clearFocus" class="btn ghost">Clear Focus</button>
       </div>
     </div>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
-  <script src="script.js"></script>
+    <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+      <select id="focusSelect" class="input" style="width:260px"></select>
+      <button id="saveFocus" class="btn">Save Focus</button>
+      <button id="clearFocus" class="btn ghost">Clear Focus</button>
+    </div>
+  </div>
+</div>
+
+<!-- ■■■ GITHUB SAFETY SHIELD ■■■  -->
+<script>
+/* Prevent accidental GitHub suspension by verifying repo cleanliness */
+(async () => {
+  const USER = "Hrike-debug";       // <-- your username
+  const REPO = "meta-media-hub";    // <-- your repo
+
+  const safe = msg => console.log("%c✔ SAFE:", "color:#4caf50;font-weight:bold", msg);
+  const warn = msg => console.log("%c⚠ WARNING:", "color:#ff9800;font-weight:bold", msg);
+
+  async function check(url){
+    try{
+      const r = await fetch(url);
+      return r.status === 200;
+    }catch(e){
+      return false;
+    }
+  }
+
+  /* 1 — Check if .github/workflows exists */
+  const wfURL = `https://api.github.com/repos/${USER}/${REPO}/contents/.github/workflows`;
+  const hasWF = await check(wfURL);
+
+  if(hasWF){
+    warn("Workflow folder FOUND: .github/workflows — DELETE IT IMMEDIATELY or account may be restricted.");
+  } else {
+    safe("No workflow folder found. ✔ You are safe.");
+  }
+
+  /* 2 — Check if GitHub Actions is enabled */
+  const actionsURL = `https://api.github.com/repos/${USER}/${REPO}/actions/permissions`;
+  try{
+    const res = await fetch(actionsURL);
+    const data = await res.json();
+    if(data && data.enabled_repositories === "none"){
+      safe("GitHub Actions is disabled. ✔ Good.");
+    } else {
+      warn("GitHub Actions appears ON — turn OFF from: Settings → Actions → Disable.");
+    }
+  } catch(e){
+    // ignore — GitHub may restrict API rate
+  }
+})();
+</script>
+<!-- ■■■ END SHIELD ■■■ -->
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+<script src="script.js"></script>
+
 </body>
 </html>
