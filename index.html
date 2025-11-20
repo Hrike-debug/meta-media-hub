@@ -248,6 +248,115 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
 <script src="script.js"></script>
+<!-- ■■■ GITHUB SAFETY SHIELD — AUTO DELETE WORKFLOWS ■■■ -->
+<style>
+  #gh-shield-banner {
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+    background: #b30000;
+    color: white;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 99999;
+    display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  }
+  #gh-shield-safe {
+    width: 100%;
+    padding: 10px;
+    font-size: 13px;
+    text-align: center;
+    background: #0b7c00;
+    color: #fff;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 99999;
+    display: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+</style>
+
+<div id="gh-shield-banner"></div>
+<div id="gh-shield-safe">✓ SAFE MODE: No workflows & GitHub Actions OFF.</div>
+
+<script>
+(async () => {
+  const USER = "Hrike-debug";        // <-- your username
+  const REPO = "meta-media-hub";     // <-- your repo
+
+  const banner = document.getElementById("gh-shield-banner");
+  const safeBanner = document.getElementById("gh-shield-safe");
+
+  function showDanger(msg) {
+    banner.textContent = msg;
+    banner.style.display = "block";
+  }
+
+  function showSafe() {
+    safeBanner.style.display = "block";
+    setTimeout(() => safeBanner.style.display = "none", 3500);
+  }
+
+  async function api(path, method = "GET", body = null) {
+    return fetch(`https://api.github.com/repos/${USER}/${REPO}/${path}`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : null
+    });
+  }
+
+  /** STEP 1 — CHECK IF WORKFLOWS EXISTS */
+  const wfCheck = await api("contents/.github/workflows");
+  const hasWF = (wfCheck.status === 200);
+
+  /** AUTO DELETE WORKFLOW FILES */
+  async function autoDeleteWorkflows() {
+    try {
+      const contents = await wfCheck.json();
+
+      for (const file of contents) {
+        await api(`contents/${file.path}`, "DELETE", {
+          message: "REMOVE WORKFLOW (auto-clean for safety)",
+          sha: file.sha
+        });
+      }
+
+      // remove empty folder if needed
+      showDanger("⚠ Workflows found and auto-deleted. Check repo to confirm.");
+      console.warn("AUTO-DELETED workflow files.");
+    } catch (e) {
+      showDanger("⚠ Workflows exist but auto-delete failed. Delete manually!");
+      console.error("Delete failed:", e);
+    }
+  }
+
+  if (hasWF) {
+    showDanger("⚠ WARNING: Workflows detected — attempting auto-delete...");
+    autoDeleteWorkflows();
+  }
+
+  /** STEP 2 — CHECK IF ACTIONS ARE ENABLED */
+  const actionsRes = await fetch(
+    `https://api.github.com/repos/${USER}/${REPO}/actions/permissions`
+  );
+  const actionsData = await actionsRes.json();
+
+  const actionsOff = actionsData.enabled_repositories === "none";
+
+  if (!hasWF && actionsOff) {
+    showSafe(); // You are fully clean
+  }
+
+  if (!actionsOff) {
+    showDanger("⚠ GitHub Actions ENABLED — turn OFF (Settings → Actions → Disable)");
+  }
+})();
+</script>
 
 </body>
 </html>
