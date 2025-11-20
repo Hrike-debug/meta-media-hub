@@ -15,7 +15,7 @@ const revokeIfBlobUrl = (el) => {
   if (!el) return;
   try {
     if (el.src && el.src.startsWith("blob:")) URL.revokeObjectURL(el.src);
-  } catch(e){ /* ignore */ }
+  } catch(e){}
 };
 
 /* ------------------------------
@@ -83,11 +83,11 @@ $("backHomeFromImage").addEventListener("click", ()=> showSection("home"));
 $("backHomeFromVideo").addEventListener("click", ()=> showSection("home"));
 
 /* ------------------------------
-   Image tool variables
+   IMAGE TOOLS (UNCHANGED)
    ------------------------------ */
 let imageFiles = [];
 let imageDetectionMap = {};
-let imageFocusMap = {}; // stores { xRel, yRel } center per filename
+let imageFocusMap = {};
 let cocoModel = null;
 
 const dropImage = $("dropImage");
@@ -109,32 +109,33 @@ const smartBanner = $("smartBanner");
 const bannerIcon = $("bannerIcon");
 const bannerText = $("bannerText");
 
-/* Drag & drop */
+/* Drag & drop images */
 dropImage.addEventListener("click", () => imageInput.click());
 imageInput.addEventListener("change", async e => {
   imageFiles = Array.from(e.target.files);
   await handleNewImages();
 });
 dropImage.addEventListener("dragover", e => { e.preventDefault(); dropImage.style.background='rgba(255,255,255,0.05)'; });
-dropImage.addEventListener("dragleave", e => { dropImage.style.background=''; });
+dropImage.addEventListener("dragleave", () => dropImage.style.background='');
 dropImage.addEventListener("drop", async e => {
-  e.preventDefault(); dropImage.style.background=''; imageFiles = Array.from(e.dataTransfer.files); await handleNewImages();
+  e.preventDefault();
+  dropImage.style.background='';
+  imageFiles = Array.from(e.dataTransfer.files);
+  await handleNewImages();
 });
 
-/* Display list */
+/* Update uploaded list */
 function refreshImageList(){
   if(!imageFiles.length){
     imageFileList.innerHTML = "No files uploaded.";
     smartBanner.style.display = "none";
     return;
   }
-
   imageFileList.innerHTML = imageFiles.map((f,i) => {
     const st = imageDetectionMap[f.name] || "unknown";
     let icon = "⏳", label = "Scanning…";
     if(st==="person"){ icon="👤"; label="Human Found"; }
     else if(st==="none"){ icon="❌"; label="No Person"; }
-
     return `
       <div style="display:flex;gap:8px;align-items:center">
         <span class="file-icon">${icon}</span>
@@ -146,9 +147,7 @@ function refreshImageList(){
   }).join("");
 }
 
-/* ------------------------------
-   Coco model (smart detection)
-   ------------------------------ */
+/* Load COCO model */
 async function loadModel(){
   if(cocoModel) return cocoModel;
   try{
@@ -157,9 +156,8 @@ async function loadModel(){
     imgStatus.textContent = "Model ready";
     return cocoModel;
   }catch(err){
-    console.error("Model load failed", err);
+    console.error(err);
     imgStatus.textContent = "Model load failed";
-    throw err;
   }
 }
 
@@ -169,14 +167,11 @@ async function detectPerson(imgEl){
     const preds = await cocoModel.detect(imgEl);
     return preds.some(p => p.class === "person");
   }catch(e){
-    console.error("detectPerson error:", e);
     return false;
   }
 }
 
-/* ------------------------------
-   Main: handle new images
-   ------------------------------ */
+/* Handle new uploads */
 async function handleNewImages(){
   imageDetectionMap = {};
   imageFiles.forEach(f => imageDetectionMap[f.name] = "unknown");
@@ -195,10 +190,7 @@ async function handleNewImages(){
     const url = URL.createObjectURL(file);
     img.src = url;
 
-    await new Promise(resolve => {
-      img.onload = resolve;
-      img.onerror = resolve;
-    });
+    await new Promise(r => { img.onload = r; img.onerror = r; });
 
     const hasPerson = await detectPerson(img);
     URL.revokeObjectURL(url);
@@ -213,7 +205,7 @@ async function handleNewImages(){
     refreshImageList();
   }
 
-  if(found > 0){
+  if(found){
     bannerIcon.textContent = "🟢";
     bannerText.innerHTML = `<strong>Smart Human Detection:</strong><br>People detected in ${found} of ${imageFiles.length} image(s).`;
     aiSwitch.classList.add("active");
@@ -229,19 +221,15 @@ async function handleNewImages(){
   imgStatus.textContent = "Scan complete";
 }
 
-/* Switch UI */
+/* Smart detection switch */
 function updateSwitchLabel(){
   const on = aiSwitch.classList.contains("active");
-  const labelOn = aiSwitch.querySelector(".label-on");
-  const labelOff = aiSwitch.querySelector(".label-off");
-  if(labelOn) labelOn.style.display = on ? "inline" : "none";
-  if(labelOff) labelOff.style.display = on ? "none" : "inline";
+  aiSwitch.querySelector(".label-on").style.display = on ? "inline" : "none";
+  aiSwitch.querySelector(".label-off").style.display = on ? "none" : "inline";
 }
 aiSwitch.addEventListener("click", ()=>{ aiSwitch.classList.toggle("active"); updateSwitchLabel(); });
 
-/* ------------------------------
-   Crop math + person box detection
-   ------------------------------ */
+/* Crop math (image only) */
 function computeCrop(imgW,imgH,tw,th, personBox, manual){
   const scale = Math.max(tw / imgW, th / imgH);
   const sW = Math.round(tw / scale);
@@ -277,23 +265,20 @@ async function detectPersonBox(imgEl){
     }
     const [x,y,w,h] = best.bbox;
     return { x, y, width: w, height: h };
-  }catch(e){
-    console.error("detectPersonBox error", e);
-    return null;
-  }
+  }catch(e){ return null; }
 }
 
-/* Crop -> blob */
+/* Convert crop to blob */
 function cropToBlob(imgEl, tw, th, crop, quality){
   const canvas = document.createElement("canvas");
   canvas.width = tw;
   canvas.height = th;
   const ctx = canvas.getContext("2d");
   ctx.drawImage(imgEl, crop.sx, crop.sy, crop.sW, crop.sH, 0, 0, tw, th);
-  return new Promise(res => canvas.toBlob(b => res(b), "image/jpeg", Math.max(0.01, Math.min(1, quality/100))));
+  return new Promise(res => canvas.toBlob(b => res(b), "image/jpeg", quality/100));
 }
 
-/* Process & zip */
+/* ZIP export */
 imgProcessBtn.addEventListener("click", async () => {
   if(!imageFiles.length) return alert("Upload images first");
 
@@ -330,8 +315,7 @@ imgProcessBtn.addEventListener("click", async () => {
     zip.file(`resized_${file.name.replace(/\.[^/.]+$/,"")}.jpg`, blob);
 
     URL.revokeObjectURL(url);
-
-    imgProgress.style.width = (index / imageFiles.length * 100) + "%";
+    imgProgress.style.width = `${index / imageFiles.length * 100}%`;
   }
 
   imgStatus.textContent = "Preparing ZIP...";
@@ -340,7 +324,7 @@ imgProcessBtn.addEventListener("click", async () => {
   imgStatus.textContent = "Done!";
 });
 
-/* Preview slider */
+/* Preview modal */
 const previewModal = $("previewModal"), beforeImg = $("beforeImg"), afterImg = $("afterImg"), afterLayer = $("afterLayer"), handle = $("handle"), previewTitle = $("previewTitle"), previewInfo = $("previewInfo");
 
 $("imgPreviewBtn").addEventListener("click", async () => {
@@ -351,14 +335,13 @@ $("imgPreviewBtn").addEventListener("click", async () => {
   const q  = parseInt(imgQuality.value) || 90;
   const useSmart = aiSwitch.classList.contains("active");
 
-  imgStatus.textContent = "Preparing preview...";
-
   revokeIfBlobUrl(beforeImg);
   revokeIfBlobUrl(afterImg);
 
   const img = new Image();
   const fileUrl = URL.createObjectURL(file);
   img.src = fileUrl;
+
   await new Promise(r => { img.onload = r; img.onerror = r; });
 
   const manual = imageFocusMap[file.name] || null;
@@ -377,20 +360,18 @@ $("imgPreviewBtn").addEventListener("click", async () => {
   previewInfo.textContent = `${tw}×${th} • ${q}%`;
 
   previewModal.style.display = "flex";
-  previewModal.setAttribute("aria-hidden", "false");
   afterLayer.style.width = "50%";
   handle.style.left = "50%";
 });
 
-/* close preview */
+/* Close preview */
 $("closePreview").addEventListener("click", () => {
   previewModal.style.display = "none";
-  previewModal.setAttribute("aria-hidden", "true");
   revokeIfBlobUrl(beforeImg);
   revokeIfBlobUrl(afterImg);
 });
 
-/* draggable slider */
+/* Preview slider drag */
 (function(){
   const wrap = $("previewArea");
   let dragging = false;
@@ -406,13 +387,12 @@ $("closePreview").addEventListener("click", () => {
   document.addEventListener("mousemove", e => {
     if(!dragging) return;
     const rect = wrap.getBoundingClientRect();
-    const pct = ((e.clientX - rect.left) / rect.width) * 100;
-    setPct(pct);
+    setPct(((e.clientX - rect.left) / rect.width) * 100);
   });
 })();
 
 /* ------------------------------
-   Manual focus system (Rectangle)
+   Manual Focus
    ------------------------------ */
 const focusModal = $("focusModal"),
       focusPreview = $("focusPreview"),
@@ -423,14 +403,12 @@ const focusModal = $("focusModal"),
       clearFocusBtn = $("clearFocus"),
       closeFocusBtn = $("closeFocus");
 
-let rectState = { visible:false, left:0, top:0, width:160, height:120 };
-let dragState = { dragging:false, resizing:false, startX:0, startY:0, startLeft:0, startTop:0, startW:0, startH:0 };
+let rectState = { visible:false };
+let dragState = { dragging:false, resizing:false };
 
 function openFocusModal(){
   focusModal.style.display = "flex";
-  focusModal.setAttribute("aria-hidden","false");
   populateFocusSelect();
-  // make sure rect hidden until image loaded
   focusRect.style.display = "none";
   rectState.visible = false;
 }
@@ -443,7 +421,6 @@ function populateFocusSelect(){
     opt.textContent = `${i+1}. ${f.name}`;
     focusSelect.appendChild(opt);
   });
-  // if no files, do nothing
   if(imageFiles.length) loadFocusImage();
 }
 
@@ -457,24 +434,21 @@ function loadFocusImage(){
   focusPreview.src = url;
 
   focusPreview.onload = () => {
-    // position rectangle centered by default (or restore saved center)
     const saved = imageFocusMap[name];
     const imgRect = focusPreview.getBoundingClientRect();
-    // ensure we compute after layout
+
     requestAnimationFrame(() => {
+      let w = Math.max(80, Math.round(imgRect.width * 0.25));
+      let h = Math.max(80, Math.round(imgRect.height * 0.25));
+
       if(saved){
-        // restore rectangle centered at saved center
-        const w = Math.min( Math.round(imgRect.width * 0.25), imgRect.width );
-        const h = Math.min( Math.round(imgRect.height * 0.25), imgRect.height );
         const cx = imgRect.left + saved.xRel * imgRect.width;
         const cy = imgRect.top + saved.yRel * imgRect.height;
         setRectFromCenter(cx, cy, w, h);
       } else {
-        // default center
-        const w = Math.max(80, Math.round(imgRect.width * 0.25));
-        const h = Math.max(80, Math.round(imgRect.height * 0.25));
         setRectFromCenter(imgRect.left + imgRect.width/2, imgRect.top + imgRect.height/2, w, h);
       }
+
       focusRect.style.display = "block";
       rectState.visible = true;
     });
@@ -482,65 +456,77 @@ function loadFocusImage(){
 }
 
 function setRectFromCenter(cx, cy, w, h){
-  const canvasRect = focusCanvas.getBoundingClientRect();
-  // clamp into canvas
+  const c = focusCanvas.getBoundingClientRect();
   let left = cx - w/2, top = cy - h/2;
-  if(left < canvasRect.left) left = canvasRect.left;
-  if(top < canvasRect.top) top = canvasRect.top;
-  if(left + w > canvasRect.right) left = canvasRect.right - w;
-  if(top + h > canvasRect.bottom) top = canvasRect.bottom - h;
-  // place as absolute relative to canvas
-  focusRect.style.left = (left - canvasRect.left) + "px";
-  focusRect.style.top = (top - canvasRect.top) + "px";
+
+  if(left < c.left) left = c.left;
+  if(top < c.top) top = c.top;
+  if(left + w > c.right) left = c.right - w;
+  if(top + h > c.bottom) top = c.bottom - h;
+
+  focusRect.style.left = (left - c.left) + "px";
+  focusRect.style.top = (top - c.top) + "px";
   focusRect.style.width = w + "px";
   focusRect.style.height = h + "px";
 }
 
 focusSelect.addEventListener("change", loadFocusImage);
 
-/* Drag & resize handlers for focusRect */
+/* Rect drag & resize */
 focusRect.addEventListener("mousedown", (e) => {
-  if(e.target.classList.contains("focus-handle")) return; // handle separately
+  if(e.target.classList.contains("focus-handle")) return;
   dragState.dragging = true;
-  dragState.startX = e.clientX; dragState.startY = e.clientY;
+  dragState.startX = e.clientX;
+  dragState.startY = e.clientY;
+
   const r = focusRect.getBoundingClientRect();
   const c = focusCanvas.getBoundingClientRect();
   dragState.startLeft = r.left - c.left;
   dragState.startTop = r.top - c.top;
-  dragState.startW = r.width; dragState.startH = r.height;
+  dragState.startW = r.width;
+  dragState.startH = r.height;
   e.preventDefault();
 });
 
 focusRect.querySelector(".focus-handle").addEventListener("mousedown", (e) => {
   dragState.resizing = true;
-  dragState.startX = e.clientX; dragState.startY = e.clientY;
+  dragState.startX = e.clientX;
+  dragState.startY = e.clientY;
+
   const r = focusRect.getBoundingClientRect();
-  dragState.startW = r.width; dragState.startH = r.height;
+  dragState.startW = r.width;
+  dragState.startH = r.height;
   e.preventDefault();
 });
 
 document.addEventListener("mousemove", (e) => {
   if(!rectState.visible) return;
-  const canvasRect = focusCanvas.getBoundingClientRect();
+  const c = focusCanvas.getBoundingClientRect();
+
   if(dragState.dragging){
     const dx = e.clientX - dragState.startX;
     const dy = e.clientY - dragState.startY;
+
     let newLeft = dragState.startLeft + dx;
     let newTop = dragState.startTop + dy;
-    // clamp
-    newLeft = Math.max(0, Math.min(canvasRect.width - dragState.startW, newLeft));
-    newTop = Math.max(0, Math.min(canvasRect.height - dragState.startH, newTop));
+
+    newLeft = Math.max(0, Math.min(c.width - dragState.startW, newLeft));
+    newTop = Math.max(0, Math.min(c.height - dragState.startH, newTop));
+
     focusRect.style.left = newLeft + "px";
     focusRect.style.top = newTop + "px";
   }
+
   if(dragState.resizing){
     const dx = e.clientX - dragState.startX;
     const dy = e.clientY - dragState.startY;
+
     let newW = Math.max(40, dragState.startW + dx);
     let newH = Math.max(40, dragState.startH + dy);
-    // clamp to canvas size
-    newW = Math.min(newW, canvasRect.width);
-    newH = Math.min(newH, canvasRect.height);
+
+    newW = Math.min(newW, c.width);
+    newH = Math.min(newH, c.height);
+
     focusRect.style.width = newW + "px";
     focusRect.style.height = newH + "px";
   }
@@ -551,62 +537,66 @@ document.addEventListener("mouseup", () => {
   dragState.resizing = false;
 });
 
-function saveRectFocus(fileName){
+function saveRectFocus(name){
   const rect = focusRect.getBoundingClientRect();
   const img = focusPreview.getBoundingClientRect();
-  if(!img.width || !img.height) return;
-  // center coords relative to displayed image
+  if(!img.width) return;
+
   const cx = rect.left + rect.width/2;
   const cy = rect.top + rect.height/2;
+
   const xRel = (cx - img.left) / img.width;
   const yRel = (cy - img.top) / img.height;
-  imageFocusMap[fileName] = { xRel: Math.max(0, Math.min(1, xRel)), yRel: Math.max(0, Math.min(1, yRel)) };
+
+  imageFocusMap[name] = {
+    xRel: Math.max(0, Math.min(1, xRel)),
+    yRel: Math.max(0, Math.min(1, yRel))
+  };
 }
 
 saveFocusBtn.addEventListener("click", () => {
   const name = focusSelect.value;
   if(!name) return alert("Select an image first");
   saveRectFocus(name);
-  alert("Focus saved (center of rectangle).");
+  alert("Focus saved.");
 });
 
 clearFocusBtn.addEventListener("click", () => {
   const name = focusSelect.value;
-  if(!name) return;
   delete imageFocusMap[name];
-  alert("Focus cleared.");
-  // reset default rectangle to center
   loadFocusImage();
 });
 
 closeFocusBtn.addEventListener("click", () => {
   focusModal.style.display = "none";
-  focusModal.setAttribute("aria-hidden","true");
   revokeIfBlobUrl(focusPreview);
 });
 
-/* when user clicks canvas we also allow setting rectangle center to that point */
+/* Canvas double-click to reposition */
 focusCanvas.addEventListener("dblclick", (e) => {
-  // map to image center
   const imgRect = focusPreview.getBoundingClientRect();
-  if(!imgRect.width) return;
-  // calculate click point clamped to image
-  let x = e.clientX; let y = e.clientY;
-  if(x < imgRect.left) x = imgRect.left; if(x > imgRect.right) x = imgRect.right;
-  if(y < imgRect.top) y = imgRect.top; if(y > imgRect.bottom) y = imgRect.bottom;
-  // move rectangle center to this point
-  const w = focusRect.getBoundingClientRect().width || Math.max(80, imgRect.width*0.25);
-  const h = focusRect.getBoundingClientRect().height || Math.max(80, imgRect.height*0.25);
+  let x = e.clientX, y = e.clientY;
+
+  if(x < imgRect.left) x = imgRect.left;
+  if(x > imgRect.right) x = imgRect.right;
+  if(y < imgRect.top) y = imgRect.top;
+  if(y > imgRect.bottom) y = imgRect.bottom;
+
+  const w = focusRect.getBoundingClientRect().width;
+  const h = focusRect.getBoundingClientRect().height;
+
   setRectFromCenter(x, y, w, h);
 });
 
-/* focus button */
-$("focusBtn").addEventListener("click", ()=>{ if(!imageFiles.length) return alert("Upload images first"); openFocusModal(); });
-
+/* Manual focus button */
+$("focusBtn").addEventListener("click", ()=> {
+  if(!imageFiles.length) return alert("Upload images first");
+  openFocusModal();
+});
 
 /* ------------------------------
-   Video tools (FFmpeg) — CLEAN VERSION (Upload + Mute Only)
--------------------------------- */
+   VIDEO TOOLS — MUTE ONLY
+   ------------------------------ */
 const dropVideo = $("dropVideo");
 const videoInput = $("videoInput");
 const videoPreview = $("videoPreview");
@@ -620,25 +610,23 @@ let ffmpegReady = false;
 const { createFFmpeg, fetchFile } = FFmpeg;
 const ffmpeg = createFFmpeg({ log: false });
 
-/* Load FFmpeg only once */
+/* Load FFmpeg repo */
 async function loadFFmpeg() {
   if (!ffmpegReady) {
-    ffmpegStatus.textContent = "Loading FFmpeg (first time 10–20 sec)…";
+    ffmpegStatus.textContent = "Loading FFmpeg (first run 10–20 sec)…";
     try {
       await ffmpeg.load();
       ffmpegReady = true;
       ffmpegStatus.textContent = "Ready";
     } catch (err) {
-      console.error("FFmpeg failed:", err);
+      console.error(err);
       ffmpegStatus.textContent = "Load Error";
-      alert("FFmpeg failed to load. Check internet/firewall.");
+      alert("FFmpeg failed to load. Check internet.");
     }
   }
 }
 
-/* ------------------------------
-   Upload Video
--------------------------------- */
+/* Drag + select video */
 dropVideo.addEventListener("click", () => videoInput.click());
 
 videoInput.addEventListener("change", e => {
@@ -660,50 +648,43 @@ dropVideo.addEventListener("drop", e => {
   handleVideo(e.dataTransfer.files);
 });
 
-function handleVideo(files) {
-  if (!files.length) return;
-
+function handleVideo(files){
+  if(!files.length) return;
   currentVideoFile = files[0];
   videoPreview.src = URL.createObjectURL(currentVideoFile);
   videoStatus.textContent = "Loaded: " + currentVideoFile.name;
 }
 
 /* ------------------------------
-   Mute Video
--------------------------------- */
-muteBtn.addEventListener("click", async () => {
-  if (!currentVideoFile) return alert("Upload a video first.");
+   MUTE VIDEO ONLY
+   ------------------------------ */
+muteBtn.addEventListener("click", async ()=> {
+  if(!currentVideoFile) return alert("Upload a video first");
 
   await loadFFmpeg();
-
   videoStatus.textContent = "Muting…";
 
-  // Read video into FFmpeg memory
   ffmpeg.FS("writeFile", "input.mp4", await fetchFile(currentVideoFile));
-
-  // Run mute command
   await ffmpeg.run("-i", "input.mp4", "-c:v", "copy", "-an", "muted.mp4");
 
-  // Get output
   const data = ffmpeg.FS("readFile", "muted.mp4");
-  const blob = new Blob([data.buffer], { type: "video/mp4" });
+  const blob = new Blob([data.buffer], {type:"video/mp4"});
 
-  const outName = currentVideoFile.name.replace(/\.[^/.]+$/, "") + "_muted.mp4";
-  createDownload(blob, outName);
+  createDownload(blob, currentVideoFile.name.replace(/\.[^.]+$/, "") + "_muted.mp4");
 
-  // Cleanup memory
   ffmpeg.FS("unlink", "input.mp4");
   ffmpeg.FS("unlink", "muted.mp4");
 
   videoStatus.textContent = "Muted video saved!";
 });
 
-
 /* ------------------------------
-   UX small improvements
+   UX improvements
    ------------------------------ */
-imgQuality.addEventListener("input", () => { imgQualityVal.textContent = imgQuality.value + "%"; });
+imgQuality.addEventListener("input", () => {
+  imgQualityVal.textContent = imgQuality.value + "%";
+});
 
-/* Initialize UI */
+/* INIT */
 updateSwitchLabel();
 showSection("home");

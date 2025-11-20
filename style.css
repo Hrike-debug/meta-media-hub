@@ -8,7 +8,7 @@
 
   --banner-on-bg: linear-gradient(90deg,#e6f7ff,#dff4ff);
   --banner-on-border: #66c7ff44;
-  --banner-on-text: #000000; /* black text when on banner */
+  --banner-on-text: #000000;
   --banner-off-bg: #0f1b24;
   --banner-off-text: #ffffff;
 }
@@ -75,9 +75,6 @@ input[type="file"]{ display:none; }
 
 /* video */
 .video-wrap{ background:#000; border-radius:8px; padding:6px; position:relative; }
-.crop-rect{ position:absolute; border:2px dashed var(--accent); background:rgba(0,0,0,0.12); cursor:move; }
-.back{ background:transparent; border:1px solid rgba(255,255,255,0.04); padding:8px; border-radius:8px; color:var(--text); cursor:pointer; }
-footer{ margin-top:12px; text-align:center; color:var(--muted); font-size:13px; }
 
 /* preview slider */
 .modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); z-index:9999; }
