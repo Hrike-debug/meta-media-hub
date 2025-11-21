@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Meta Media Hub — Compact (Smart Detection)</title>
+  <title>Meta Media Hub — Image Tools Only</title>
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -26,7 +26,6 @@
         </div>
       </div>
 
-      <!-- PASSWORD MODAL -->
       <div id="pwModal" class="modal" style="display:flex">
         <div class="panel" style="max-width:480px;">
           <h3 style="margin:0 0 8px;color:var(--accent)">Enter Password</h3>
@@ -39,28 +38,23 @@
         </div>
       </div>
 
-      <!-- HOME -->
       <div id="home" class="home" style="display:none">
         <div class="card" id="btnImage">
           <div class="icon">🖼️</div>
           <div class="title">IMAGE TOOLS</div>
           <div class="sub">Resize • Focus • Smart Centering • ZIP</div>
         </div>
-
-        <div class="card" id="btnVideo">
-          <div class="icon">🎞️</div>
-          <div class="title">VIDEO TOOLS</div>
-          <div class="sub">Mute Video Only</div>
-        </div>
       </div>
 
-      <!-- IMAGE SECTION (unchanged) -->
+      <!-- IMAGE SECTION ONLY -->
+      <!-- (same as original, video section removed) -->
+
       <div id="imageSection" class="section">
         <div class="center-column">
 
           <div class="section-head">
             <div>
-              <h2 style="margin:0;color:var(--accent)">Image Tools (Compact)</h2>
+              <h2 style="margin:0;color:var(--accent)">Image Tools</h2>
               <div class="small">Drag & drop multiple images — smart detection recommends best crop.</div>
             </div>
             <div><button id="backHomeFromImage" class="back">← Home</button></div>
@@ -88,8 +82,7 @@
 
               <div style="flex:1"></div>
 
-              <div id="imgAiToggle" class="ai-switch" title="Smart Human Detection (recommended)">
-                <div class="switch-track"><div class="switch-ball"></div></div>
+              <div id="imgAiToggle" class="ai-switch">
                 <span class="label-off">Smart Human Detection: OFF</span>
                 <span class="label-on">Smart Human Detection: ON</span>
               </div>
@@ -107,58 +100,11 @@
         </div>
       </div>
 
-      <!-- VIDEO SECTION (CROP REMOVED) -->
-      <div id="videoSection" class="section">
-        <div class="center-column">
-          <div class="section-head">
-            <div>
-              <h2 style="margin:0;color:var(--accent)">Video Tools</h2>
-              <div class="small">Mute videos in browser</div>
-            </div>
-            <div><button id="backHomeFromVideo" class="back">← Home</button></div>
-          </div>
-
-          <div class="box">
-            <div id="dropVideo" class="dropzone">Click or drag & drop a video (mp4/webm)</div>
-            <input id="videoInput" type="file" accept="video/*">
-
-            <div style="margin-top:10px" class="video-wrap" id="videoWrap">
-              <video id="videoPreview" controls style="width:100%;height:auto;background:#000"></video>
-            </div>
-
-            <div class="controls" style="margin-top:8px">
-              <button id="muteBtn" class="btn">Mute Video</button>
-            </div>
-
-            <div class="progress"><div id="videoProgress" class="progress-bar"></div></div>
-            <div id="videoStatus" class="small" style="margin-top:8px">No video loaded.</div>
-            <div style="margin-top:8px">
-              <label class="small">FFmpeg:</label>
-              <span id="ffmpegStatus" class="small">idle</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <footer>Created by Mukesh Yadav • META E-learning Team</footer>
     </div>
   </div>
 
-  <!-- PREVIEW MODAL + FOCUS MODAL (unchanged) -->
-  <!-- (kept exactly same as your version) -->
-
-  <!-- SAFETY SHIELD + LIBRARIES + SCRIPT -->
-  <!-- (kept exactly same as your version) -->
-
-  <!-- YOUR SAME SHIELD + SCRIPTS BELOW -->
-  <!-- DO NOT MODIFY -->
-  <!-- … your entire shield + script.js imports stay unchanged … -->
-  
-<script src="script.js?v=2000"></script>
+<script src="script.js"></script>
 
 </body>
 </html>
-
-
-
-
