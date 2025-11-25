@@ -107,7 +107,8 @@ h1 {
   display: flex;
   justify-content: center;
   gap: 22px;
-  padding-top: 60px;
+  padding-top: 40px;
+  padding-bottom: 10px;
 }
 
 .tool-card {
@@ -137,6 +138,51 @@ h1 {
 }
 
 .tool-card p {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* -----------------------------------------------------
+   ABOUT SECTION
+----------------------------------------------------- */
+
+.about {
+  background: var(--panel);
+  padding: 22px;
+  margin: 26px auto 34px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  max-width: 880px;
+  text-align: center;
+}
+
+.about h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.about p {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 4px 0;
+}
+
+.about-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.about-list li {
+  padding: 4px 0;
+}
+
+.about-foot {
+  margin-top: 16px;
   font-size: 13px;
   color: var(--muted);
 }
@@ -390,6 +436,12 @@ input[type="file"] {
   border-top: 1px solid var(--border);
 }
 
+.ai-panel-header {
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
 .ai-panel-header .label {
   font-size: 13px;
   color: var(--muted);
@@ -422,7 +474,7 @@ input[type="file"] {
   opacity: 0.9;
 }
 
-/* mini quality control */
+/* mini controls */
 
 .mini-control {
   display: flex;
@@ -438,6 +490,39 @@ input[type="file"] {
 .mini-val {
   font-size: 12px;
   color: var(--muted);
+}
+
+/* -----------------------------------------------------
+   TOOLTIP
+----------------------------------------------------- */
+
+.help-tip {
+  display:inline-flex;
+  width:18px;
+  height:18px;
+  background:var(--accent);
+  color:#002;
+  border-radius:50%;
+  justify-content:center;
+  align-items:center;
+  font-size:13px;
+  cursor:pointer;
+  margin-left:6px;
+  font-weight:700;
+}
+
+.tooltip-box {
+  position:absolute;
+  background:var(--card);
+  color:var(--text);
+  padding:10px 14px;
+  border-radius:8px;
+  font-size:13px;
+  border:1px solid var(--border);
+  box-shadow:var(--shadow);
+  max-width:240px;
+  display:none;
+  z-index:99999;
 }
 
 /* -----------------------------------------------------
