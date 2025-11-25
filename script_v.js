@@ -96,7 +96,6 @@ function activateSection(sec) {
   });
   if (!sec) return;
   sec.style.display = sec === homeSection ? "flex" : "block";
-  // small delay for transition
   requestAnimationFrame(() => sec.classList.add("active"));
 }
 
@@ -732,7 +731,6 @@ function getEnhSettings() {
     faceEnhance: !!enhFaceEnhance.checked,
     denoise: !!enhDenoise.checked
   };
-  // prefer 4x if both
   if (s.upscale2x && s.upscale4x) s.upscale2x = false;
   const any = s.upscale2x || s.upscale4x || s.faceEnhance || s.denoise;
   return any ? s : null;
@@ -927,7 +925,6 @@ async function runEnhancer(previewOnly = false) {
   URL.revokeObjectURL(url);
 
   if (previewOnly) {
-    // reuse preview modal
     revokeIfBlobUrl(beforeImg);
     revokeIfBlobUrl(afterImg);
 
@@ -954,6 +951,29 @@ async function runEnhancer(previewOnly = false) {
 
 enhPreviewBtn.addEventListener("click", () => runEnhancer(true));
 enhRunBtn.addEventListener("click", () => runEnhancer(false));
+
+/* ------------------------------
+   TOOLTIP LOGIC
+------------------------------ */
+
+document.querySelectorAll(".help-tip").forEach(el => {
+  const tooltip = document.createElement("div");
+  tooltip.className = "tooltip-box";
+  tooltip.textContent = el.getAttribute("data-tip") || "";
+  document.body.appendChild(tooltip);
+
+  el.addEventListener("mouseenter", () => {
+    if (!tooltip.textContent) return;
+    tooltip.style.display = "block";
+    const r = el.getBoundingClientRect();
+    tooltip.style.left = (r.left + window.scrollX) + "px";
+    tooltip.style.top = (r.bottom + 8 + window.scrollY) + "px";
+  });
+
+  el.addEventListener("mouseleave", () => {
+    tooltip.style.display = "none";
+  });
+});
 
 /* ------------------------------
    MISC
