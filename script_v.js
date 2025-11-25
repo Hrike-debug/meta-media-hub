@@ -1,1282 +1,213 @@
-/* ----------------------------------------------------
-   Meta Media Hub — Image Tools + AI Enhancer
----------------------------------------------------- */
+/* ==========================================================
+   Meta Media Hub - script_v.js  (Enhanced)
+   Image Resize + AI Enhancer + Object Hide
+   Client-side processing only (no uploads)
+   ----------------------------------------------------------
+========================================================== */
 
+/* Helper */
 const $ = id => document.getElementById(id);
 
-const createDownload = (blob, name) => {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-};
+/* AUTH */
+const pwModal = $("pwModal"), pwInput = $("pwInput"), pwBtn = $("pwBtn"), pwMsg = $("pwMsg"), statusText = $("statusText");
+const AUTH_KEY = "mm_auth_v2", PASSWORD = "Meta@123";
 
-const revokeIfBlobUrl = (el) => {
-  if (!el) return;
-  try {
-    if (el.src && el.src.startsWith("blob:")) URL.revokeObjectURL(el.src);
-  } catch {}
-};
+function saveAuth(v){ v ? localStorage.setItem(AUTH_KEY,"true") : localStorage.removeItem(AUTH_KEY); }
+function isAuthed(){ return localStorage.getItem(AUTH_KEY) === "true"; }
 
-/* ------------------------------
-   THEME TOGGLE
------------------------------- */
-
-const themeToggle = $("themeToggle");
-const THEME_KEY = "mm_theme_v1";
-
-function applyTheme(theme) {
-  if (theme === "light") document.documentElement.classList.add("theme-light");
-  else document.documentElement.classList.remove("theme-light");
-  themeToggle.textContent = theme === "light" ? "☀️" : "🌙";
-  localStorage.setItem(THEME_KEY, theme);
-}
-
-themeToggle.addEventListener("click", () => {
-  const current = localStorage.getItem(THEME_KEY) || "dark";
-  applyTheme(current === "dark" ? "light" : "dark");
-});
-
-applyTheme(localStorage.getItem(THEME_KEY) || "dark");
-
-/* ------------------------------
-   AUTH
------------------------------- */
-
-const pwModal = $("pwModal");
-const pwInput = $("pwInput");
-const pwBtn = $("pwBtn");
-const pwMsg = $("pwMsg");
-const statusText = $("statusText");
-const AUTH_KEY = "mm_auth_v1";
-const PASSWORD = "Meta@123";
-
-function saveAuth(v) {
-  v ? localStorage.setItem(AUTH_KEY, "true") : localStorage.removeItem(AUTH_KEY);
-}
-function isAuthed() {
-  return localStorage.getItem(AUTH_KEY) === "true";
-}
-
-async function unlock() {
-  if (pwInput.value === PASSWORD) {
+async function unlock(){
+  if(pwInput.value === PASSWORD){
     saveAuth(true);
-    pwInput.value = "";
-    pwMsg.textContent = "";
-    pwModal.style.display = "none";
+    pwModal.style.display="none";
+    statusText.textContent="Unlocked";
     showSection("home");
-    statusText.textContent = "Unlocked";
   } else {
-    pwMsg.textContent = "Incorrect password";
+    pwMsg.textContent="Incorrect password";
   }
 }
-
 pwBtn.addEventListener("click", unlock);
-pwInput.addEventListener("keydown", e => { if (e.key === "Enter") unlock(); });
+pwInput.addEventListener("keydown", e => { if(e.key==="Enter") unlock(); });
 
-if (isAuthed()) {
-  pwModal.style.display = "none";
+if(isAuthed()){
+  pwModal.style.display="none";
   showSection("home");
 }
 
-/* ------------------------------
-   SECTION NAVIGATION
------------------------------- */
-
-const homeSection = $("home");
-const imageSection = $("imageSection");
-const enhancerSection = $("enhancerSection");
-
-function activateSection(sec) {
-  [homeSection, imageSection, enhancerSection].forEach(s => {
-    if (!s) return;
-    s.classList.remove("active");
-    s.style.display = "none";
-  });
-  if (!sec) return;
-  sec.style.display = sec === homeSection ? "flex" : "block";
-  requestAnimationFrame(() => sec.classList.add("active"));
+/* SECTION CONTROL */
+function showSection(name){
+  $("home").style.display = (name==="home")?"flex":"none";
+  $("resizeSection").style.display = (name==="resize")?"block":"none";
+  $("enhanceSection").style.display = (name==="enhance")?"block":"none";
 }
 
-function showSection(name) {
-  if (name === "home") {
-    activateSection(homeSection);
-    statusText.textContent = "Choose tool";
-  } else if (name === "image") {
-    activateSection(imageSection);
-    statusText.textContent = "Image tools";
-  } else if (name === "enhancer") {
-    activateSection(enhancerSection);
-    statusText.textContent = "AI Enhancer";
-  }
-}
-
-$("btnImage").addEventListener("click", () => showSection("image"));
-$("btnEnhancer").addEventListener("click", () => showSection("enhancer"));
-$("backHomeFromImage").addEventListener("click", () => showSection("home"));
-$("backHomeFromEnhancer").addEventListener("click", () => showSection("home"));
-
-/* ------------------------------
-   IMAGE TOOLS (RESIZER)
------------------------------- */
-
-let imageFiles = [];
-let imageDetectionMap = {};
-let imageFocusMap = {};
-let cocoModel = null;
-
-const dropImage = $("dropImage");
-const imageInput = $("imageInput");
-const imageFileList = $("imageFileList");
-
-const imgWidth = $("imgWidth");
-const imgHeight = $("imgHeight");
-const imgQuality = $("imgQuality");
-const imgQualityVal = $("imgQualityVal");
-
-const aiSwitch = $("imgAiToggle");
-const imgPreviewBtn = $("imgPreviewBtn");
-const imgProcessBtn = $("imgProcessBtn");
-const imgStatus = $("imgStatus");
-const imgProgress = $("imgProgress");
-
-const smartBanner = $("smartBanner");
-const bannerIcon = $("bannerIcon");
-const bannerText = $("bannerText");
-
-/* Drag & drop for resizer */
-
-dropImage.addEventListener("click", () => imageInput.click());
-
-imageInput.addEventListener("change", async e => {
-  imageFiles = Array.from(e.target.files);
-  await handleNewImages();
-});
-
-dropImage.addEventListener("dragover", e => {
-  e.preventDefault();
-  dropImage.style.background = "rgba(255,255,255,0.06)";
-});
-
-dropImage.addEventListener("dragleave", () => {
-  dropImage.style.background = "rgba(255,255,255,0.03)";
-});
-
-dropImage.addEventListener("drop", async e => {
-  e.preventDefault();
-  dropImage.style.background = "rgba(255,255,255,0.03)";
-  imageFiles = Array.from(e.dataTransfer.files);
-  await handleNewImages();
-});
-
-/* file list UI */
-
-function refreshImageList() {
-  if (!imageFiles.length) {
-    imageFileList.innerHTML = "No files uploaded.";
-    smartBanner.style.display = "none";
-    return;
-  }
-
-  imageFileList.innerHTML = imageFiles.map((f, i) => {
-    const st = imageDetectionMap[f.name] || "unknown";
-    let icon = "⏳", label = "Scanning…";
-    if (st === "person") { icon = "👤"; label = "Human Found"; }
-    else if (st === "none") { icon = "❌"; label = "No Person"; }
-
-    return `
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
-        <span class="file-icon">${icon}</span>
-        <div>
-          <strong>${i + 1}.</strong> ${f.name}
-          <div style="font-size:12px;color:var(--muted);">
-            ${label} • ${(f.size / 1024).toFixed(1)} KB
-          </div>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-/* Model load & detection */
-
-async function loadModel() {
-  if (cocoModel) return cocoModel;
-  imgStatus.textContent = "Downloading detection model…";
-  cocoModel = await cocoSsd.load();
-  imgStatus.textContent = "Model ready";
-  return cocoModel;
-}
-
-async function detectPerson(imgEl) {
-  try {
-    await loadModel();
-    const preds = await cocoModel.detect(imgEl);
-    return preds.some(p => p.class === "person");
-  } catch {
-    return false;
-  }
-}
-
-async function detectPersonBox(imgEl) {
-  try {
-    await loadModel();
-    const preds = await cocoModel.detect(imgEl);
-    const persons = preds.filter(p => p.class === "person");
-    if (!persons.length) return null;
-
-    let best = persons[0];
-    let area = best.bbox[2] * best.bbox[3];
-    for (const p of persons) {
-      const a = p.bbox[2] * p.bbox[3];
-      if (a > area) { best = p; area = a; }
-    }
-    const [x, y, w, h] = best.bbox;
-    return { x, y, width: w, height: h };
-  } catch {
-    return null;
-  }
-}
-
-/* handle new images (scan for people) */
-
-async function handleNewImages() {
-  imageDetectionMap = {};
-  imageFiles.forEach(f => imageDetectionMap[f.name] = "unknown");
-
-  refreshImageList();
-  imgStatus.textContent = "Scanning images...";
-  smartBanner.style.display = "flex";
-  bannerIcon.textContent = "⏳";
-  bannerText.textContent = "Scanning uploaded images...";
-
-  let found = 0;
-
-  for (const file of imageFiles) {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.src = url;
-
-    await new Promise(r => { img.onload = r; img.onerror = r; });
-
-    const hasPerson = await detectPerson(img);
-    URL.revokeObjectURL(url);
-
-    if (hasPerson) {
-      imageDetectionMap[file.name] = "person";
-      found++;
-    } else {
-      imageDetectionMap[file.name] = "none";
-    }
-
-    refreshImageList();
-  }
-
-  if (found) {
-    bannerIcon.textContent = "🟢";
-    bannerText.innerHTML = `<strong>Smart Human Detection:</strong><br>People detected in ${found} of ${imageFiles.length} image(s).`;
-    aiSwitch.classList.add("active");
-  } else {
-    bannerIcon.textContent = "⚪";
-    bannerText.innerHTML = `<strong>Smart Human Detection:</strong><br>No people found.`;
-    aiSwitch.classList.remove("active");
-  }
-
-  updateSwitchLabel();
-  imgStatus.textContent = "Scan complete";
-}
-
-/* smart switch label */
-
-function updateSwitchLabel() {
-  const on = aiSwitch.classList.contains("active");
-  const onLabel = aiSwitch.querySelector(".label-on");
-  const offLabel = aiSwitch.querySelector(".label-off");
-  if (onLabel) onLabel.style.display = on ? "inline" : "none";
-  if (offLabel) offLabel.style.display = on ? "none" : "inline";
-}
-
-aiSwitch.addEventListener("click", () => {
-  aiSwitch.classList.toggle("active");
-  updateSwitchLabel();
-});
-
-/* cropping math */
-
-function computeCrop(imgW, imgH, tw, th, personBox, manual) {
-  const scale = Math.max(tw / imgW, th / imgH);
-  const sW = Math.round(tw / scale);
-  const sH = Math.round(th / scale);
-
-  let cx = imgW / 2, cy = imgH / 2;
-  if (manual) {
-    cx = manual.xRel * imgW;
-    cy = manual.yRel * imgH;
-  } else if (personBox) {
-    cx = personBox.x + personBox.width / 2;
-    cy = personBox.y + personBox.height / 2;
-  }
-
-  let sx = Math.round(cx - sW / 2);
-  let sy = Math.round(cy - sH / 2);
-
-  if (sx < 0) sx = 0;
-  if (sy < 0) sy = 0;
-  if (sx + sW > imgW) sx = imgW - sW;
-  if (sy + sH > imgH) sy = imgH - sH;
-
-  return { sx, sy, sW, sH };
-}
-
-/* crop -> blob */
-
-function cropToBlob(imgEl, tw, th, crop, quality) {
-  const canvas = document.createElement("canvas");
-  canvas.width = tw;
-  canvas.height = th;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(
-    imgEl,
-    crop.sx, crop.sy, crop.sW, crop.sH,
-    0, 0, tw, th
-  );
-  return new Promise(res =>
-    canvas.toBlob(
-      b => res(b),
-      "image/jpeg",
-      Math.max(0.1, Math.min(1, quality / 100))
-    )
-  );
-}
-
-/* process all -> zip */
-
-imgProcessBtn.addEventListener("click", async () => {
-  if (!imageFiles.length) return alert("Upload images first.");
-
-  const tw = parseInt(imgWidth.value, 10);
-  const th = parseInt(imgHeight.value, 10);
-  const q = parseInt(imgQuality.value, 10) || 90;
-
-  if (!tw || !th) return alert("Enter width & height.");
-
-  imgStatus.textContent = "Starting...";
-  imgProgress.style.width = "0%";
-
-  const zip = new JSZip();
-  let index = 0;
-
-  for (const file of imageFiles) {
-    index++;
-    imgStatus.textContent = `Processing ${index}/${imageFiles.length}: ${file.name}`;
-
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.src = url;
-
-    await new Promise(r => { img.onload = r; img.onerror = r; });
-
-    const manual = imageFocusMap[file.name] || null;
-    let personBox = null;
-    if (aiSwitch.classList.contains("active") && !manual) {
-      personBox = await detectPersonBox(img);
-    }
-
-    const crop = computeCrop(img.naturalWidth, img.naturalHeight, tw, th, personBox, manual);
-    const blob = await cropToBlob(img, tw, th, crop, q);
-    zip.file(`resized_${file.name.replace(/\.[^.]+$/, "")}.jpg`, blob);
-    URL.revokeObjectURL(url);
-
-    imgProgress.style.width = `${(index / imageFiles.length) * 100}%`;
-  }
-
-  imgStatus.textContent = "Preparing ZIP...";
-  const zipBlob = await zip.generateAsync({ type: "blob" });
-  createDownload(zipBlob, "resized_images.zip");
-  imgStatus.textContent = "Done!";
-});
-
-/* ------------------------------
-   PREVIEW MODAL
------------------------------- */
-
-const previewModal = $("previewModal");
-const beforeImg = $("beforeImg");
-const afterImg = $("afterImg");
-const afterLayer = $("afterLayer");
-const handle = $("handle");
-const previewTitle = $("previewTitle");
-const previewInfo = $("previewInfo");
-const previewArea = $("previewArea");
-
-$("imgPreviewBtn").addEventListener("click", async () => {
-  if (!imageFiles.length) return alert("Upload images first.");
-  const file = imageFiles[0];
-
-  const tw = parseInt(imgWidth.value, 10) || 800;
-  const th = parseInt(imgHeight.value, 10) || 600;
-  const q = parseInt(imgQuality.value, 10) || 90;
-
-  imgStatus.textContent = "Preparing preview...";
-
-  revokeIfBlobUrl(beforeImg);
-  revokeIfBlobUrl(afterImg);
-
-  const img = new Image();
-  const fileUrl = URL.createObjectURL(file);
-  img.src = fileUrl;
-
-  await new Promise(r => { img.onload = r; img.onerror = r; });
-
-  const manual = imageFocusMap[file.name] || null;
-  let personBox = null;
-  if (aiSwitch.classList.contains("active") && !manual) {
-    personBox = await detectPersonBox(img);
-  }
-
-  const crop = computeCrop(img.naturalWidth, img.naturalHeight, tw, th, personBox, manual);
-  const blob = await cropToBlob(img, tw, th, crop, q);
-
-  beforeImg.src = fileUrl;
-  afterImg.src = URL.createObjectURL(blob);
-
-  previewTitle.textContent = file.name;
-  previewInfo.textContent = `${tw}×${th} • ${q}%`;
-
-  previewModal.style.display = "flex";
-  afterLayer.style.width = "50%";
-  handle.style.left = "50%";
-});
-
-$("closePreview").addEventListener("click", () => {
-  previewModal.style.display = "none";
-  revokeIfBlobUrl(beforeImg);
-  revokeIfBlobUrl(afterImg);
-});
-
-/* preview slider drag */
-
-(function () {
-  let dragging = false;
-
-  handle.addEventListener("mousedown", () => {
-    dragging = true;
-    document.body.style.cursor = "ew-resize";
-  });
-
-  document.addEventListener("mouseup", () => {
-    dragging = false;
-    document.body.style.cursor = "";
-  });
-
-  document.addEventListener("mousemove", e => {
-    if (!dragging) return;
-    const rect = previewArea.getBoundingClientRect();
-    const pct = ((e.clientX - rect.left) / rect.width) * 100;
-    const clamped = Math.max(0, Math.min(100, pct));
-    afterLayer.style.width = clamped + "%";
-    handle.style.left = clamped + "%";
-  });
-})();
-
-/* ------------------------------
-   MANUAL FOCUS MODAL
------------------------------- */
-
-const focusModal = $("focusModal");
-const focusPreview = $("focusPreview");
-const focusRect = $("focusRect");
-const focusCanvas = $("focusCanvas");
-const focusSelect = $("focusSelect");
-const saveFocusBtn = $("saveFocus");
-const clearFocusBtn = $("clearFocus");
-const closeFocusBtn = $("closeFocus");
-const focusBtn = $("focusBtn");
-
-let rectVisible = false;
-let dragState = { dragging: false, resizing: false, startX: 0, startY: 0, startLeft: 0, startTop: 0, startW: 0, startH: 0 };
-
-focusBtn.addEventListener("click", () => {
-  if (!imageFiles.length) return alert("Upload images first.");
-  openFocusModal();
-});
-
-function openFocusModal() {
-  focusModal.style.display = "flex";
-  populateFocusSelect();
-  focusRect.style.display = "none";
-  rectVisible = false;
-}
-
-function populateFocusSelect() {
-  focusSelect.innerHTML = "";
-  imageFiles.forEach((f, i) => {
-    const opt = document.createElement("option");
-    opt.value = f.name;
-    opt.textContent = `${i + 1}. ${f.name}`;
-    focusSelect.appendChild(opt);
-  });
-  if (imageFiles.length) loadFocusImage();
-}
-
-function loadFocusImage() {
-  const name = focusSelect.value;
-  const file = imageFiles.find(f => f.name === name);
-  if (!file) return;
-
-  revokeIfBlobUrl(focusPreview);
-  const url = URL.createObjectURL(file);
-  focusPreview.src = url;
-
-  focusPreview.onload = () => {
-    const imgRect = focusPreview.getBoundingClientRect();
-    requestAnimationFrame(() => {
-      const saved = imageFocusMap[name];
-      const w = Math.max(80, imgRect.width * 0.25);
-      const h = Math.max(80, imgRect.height * 0.25);
-
-      const cx = saved ? imgRect.left + saved.xRel * imgRect.width : imgRect.left + imgRect.width / 2;
-      const cy = saved ? imgRect.top + saved.yRel * imgRect.height : imgRect.top + imgRect.height / 2;
-
-      setRectFromCenter(cx, cy, w, h);
-      focusRect.style.display = "block";
-      rectVisible = true;
-    });
-  };
-}
-
-focusSelect.addEventListener("change", loadFocusImage);
-
-function setRectFromCenter(cx, cy, w, h) {
-  const c = focusCanvas.getBoundingClientRect();
-  let left = cx - w / 2, top = cy - h / 2;
-
-  if (left < c.left) left = c.left;
-  if (top < c.top) top = c.top;
-  if (left + w > c.right) left = c.right - w;
-  if (top + h > c.bottom) top = c.bottom - h;
-
-  focusRect.style.left = (left - c.left) + "px";
-  focusRect.style.top = (top - c.top) + "px";
-  focusRect.style.width = w + "px";
-  focusRect.style.height = h + "px";
-}
-
-/* drag & resize focus rect */
-
-focusRect.addEventListener("mousedown", e => {
-  if (e.target.classList.contains("focus-handle")) return;
-  const r = focusRect.getBoundingClientRect();
-  const c = focusCanvas.getBoundingClientRect();
-  dragState.dragging = true;
-  dragState.startX = e.clientX;
-  dragState.startY = e.clientY;
-  dragState.startLeft = r.left - c.left;
-  dragState.startTop = r.top - c.top;
-  dragState.startW = r.width;
-  dragState.startH = r.height;
-  e.preventDefault();
-});
-
-focusRect.querySelector(".focus-handle").addEventListener("mousedown", e => {
-  dragState.resizing = true;
-  dragState.startX = e.clientX;
-  dragState.startY = e.clientY;
-  const r = focusRect.getBoundingClientRect();
-  dragState.startW = r.width;
-  dragState.startH = r.height;
-  e.preventDefault();
-});
-
-document.addEventListener("mousemove", e => {
-  if (!rectVisible) return;
-  const c = focusCanvas.getBoundingClientRect();
-
-  if (dragState.dragging) {
-    const dx = e.clientX - dragState.startX;
-    const dy = e.clientY - dragState.startY;
-    let L = dragState.startLeft + dx;
-    let T = dragState.startTop + dy;
-    L = Math.max(0, Math.min(c.width - dragState.startW, L));
-    T = Math.max(0, Math.min(c.height - dragState.startH, T));
-    focusRect.style.left = L + "px";
-    focusRect.style.top = T + "px";
-  }
-
-  if (dragState.resizing) {
-    const dx = e.clientX - dragState.startX;
-    const dy = e.clientY - dragState.startY;
-    let W = Math.max(40, dragState.startW + dx);
-    let H = Math.max(40, dragState.startH + dy);
-    W = Math.min(W, c.width);
-    H = Math.min(H, c.height);
-    focusRect.style.width = W + "px";
-    focusRect.style.height = H + "px";
-  }
-});
-
-document.addEventListener("mouseup", () => {
-  dragState.dragging = false;
-  dragState.resizing = false;
-});
-
-function saveRectFocus(name) {
-  const rect = focusRect.getBoundingClientRect();
-  const img = focusPreview.getBoundingClientRect();
-  if (!img.width || !img.height) return;
-
-  const cx = rect.left + rect.width / 2;
-  const cy = rect.top + rect.height / 2;
-
-  const xRel = (cx - img.left) / img.width;
-  const yRel = (cy - img.top) / img.height;
-
-  imageFocusMap[name] = {
-    xRel: Math.max(0, Math.min(1, xRel)),
-    yRel: Math.max(0, Math.min(1, yRel))
-  };
-}
-
-saveFocusBtn.addEventListener("click", () => {
-  const name = focusSelect.value;
-  if (!name) return alert("Select an image first.");
-  saveRectFocus(name);
-  alert("Focus saved.");
-});
-
-clearFocusBtn.addEventListener("click", () => {
-  const name = focusSelect.value;
-  if (!name) return;
-  delete imageFocusMap[name];
-  loadFocusImage();
-});
-
-closeFocusBtn.addEventListener("click", () => {
-  focusModal.style.display = "none";
-  revokeIfBlobUrl(focusPreview);
-});
-
-/* double click reposition */
-
-focusCanvas.addEventListener("dblclick", e => {
-  const imgRect = focusPreview.getBoundingClientRect();
-  if (!imgRect.width) return;
-  let x = e.clientX, y = e.clientY;
-  if (x < imgRect.left) x = imgRect.left;
-  if (x > imgRect.right) x = imgRect.right;
-  if (y < imgRect.top) y = imgRect.top;
-  if (y > imgRect.bottom) y = imgRect.bottom;
-
-  const r = focusRect.getBoundingClientRect();
-  setRectFromCenter(x, y, r.width || 100, r.height || 100);
-});
-
-/* ------------------------------
-   AI IMAGE ENHANCER SECTION
------------------------------- */
-
-const dropEnhance = $("dropEnhance");
-const enhanceInput = $("enhanceInput");
-const enhFileInfo = $("enhFileInfo");
-
-const enhUpscale2x = $("enhUpscale2x");
-const enhUpscale4x = $("enhUpscale4x");
-const enhFaceEnhance = $("enhFaceEnhance");
-const enhDenoise = $("enhDenoise");
-const enhOCR = $("enhOCR");
-const enhHDR = $("enhHDR");
-const enhHide = $("enhHide");
-
-const enhQuality = $("enhQuality");
-const enhQualityVal = $("enhQualityVal");
-const enhPreviewBtn = $("enhPreviewBtn");
-const enhRunBtn = $("enhRunBtn");
-const enhStatus = $("enhStatus");
-const enhProgress = $("enhProgress");
-
-const hideAreaBtn = $("hideAreaBtn");
-
-let enhanceFile = null;
-let enhHideBox = null; // {xRel,yRel,wRel,hRel}
-
-/* drag & drop for enhancer */
-
-dropEnhance.addEventListener("click", () => enhanceInput.click());
-
-enhanceInput.addEventListener("change", e => {
-  handleEnhanceFile(e.target.files);
-});
-
-dropEnhance.addEventListener("dragover", e => {
-  e.preventDefault();
-  dropEnhance.style.background = "rgba(255,255,255,0.06)";
-});
-dropEnhance.addEventListener("dragleave", () => {
-  dropEnhance.style.background = "rgba(255,255,255,0.03)";
-});
-dropEnhance.addEventListener("drop", e => {
-  e.preventDefault();
-  dropEnhance.style.background = "rgba(255,255,255,0.03)";
-  handleEnhanceFile(e.dataTransfer.files);
-});
-
-function handleEnhanceFile(files) {
-  if (!files.length) return;
-  enhanceFile = files[0];
-  enhFileInfo.textContent = `Selected: ${enhanceFile.name} • ${(enhanceFile.size / 1024).toFixed(1)} KB`;
-  enhStatus.textContent = "Ready to enhance.";
-}
-
-/* AI settings */
-
-function getEnhSettings() {
-  const s = {
-    upscale2x: !!enhUpscale2x.checked,
-    upscale4x: !!enhUpscale4x.checked,
-    faceEnhance: !!enhFaceEnhance.checked,
-    denoise: !!enhDenoise.checked,
-    ocr: !!enhOCR.checked,
-    hdr: !!enhHDR.checked,
-    objectHide: !!enhHide.checked
-  };
-  if (s.upscale2x && s.upscale4x) s.upscale2x = false;
-  const any = s.upscale2x || s.upscale4x || s.faceEnhance || s.denoise || s.ocr || s.hdr || s.objectHide;
-  return any ? s : null;
-}
-
-/* Enhancement helpers */
-
-function applyEnhancementsToCanvas(canvas, ctx, aiSettings) {
-  let w = canvas.width;
-  let h = canvas.height;
-
-  let imageData = ctx.getImageData(0, 0, w, h);
-  let data = imageData.data;
-
-  const clamp = v => v < 0 ? 0 : (v > 255 ? 255 : v);
-
-  // base light contrast / warmth
-  const contrast = 1.06;
-  const brightness = 4;
-  for (let i = 0; i < data.length; i += 4) {
-    for (let c = 0; c < 3; c++) {
-      const idx = i + c;
-      let v = data[idx];
-      v = (v - 128) * contrast + 128 + brightness;
-      data[idx] = clamp(v);
-    }
-  }
-
-  // denoise
-  if (aiSettings && aiSettings.denoise) {
-    imageData = gaussianBlur(imageData, w, h);
-  }
-
-  // face / detail sharpen
-  if (aiSettings && (aiSettings.denoise || aiSettings.faceEnhance)) {
-    imageData = sharpen(imageData, w, h);
-  }
-
-  // put base processed image
-  ctx.putImageData(imageData, 0, 0);
-
-  // upscale after basic processing
-  if (aiSettings && (aiSettings.upscale2x || aiSettings.upscale4x)) {
-    const scale = aiSettings.upscale4x ? 4 : 2;
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = w;
-    tempCanvas.height = h;
-    const tctx = tempCanvas.getContext("2d");
-    tctx.putImageData(imageData, 0, 0);
-
-    const newW = w * scale;
-    const newH = h * scale;
-    canvas.width = newW;
-    canvas.height = newH;
-    ctx = canvas.getContext("2d");
-    ctx.drawImage(tempCanvas, 0, 0, newW, newH);
-
-    w = newW;
-    h = newH;
-    imageData = ctx.getImageData(0, 0, w, h);
-  }
-
-  // OCR / text clarity
-  if (aiSettings && aiSettings.ocr) {
-    imageData = applyOCRBoost(imageData, w, h);
-  }
-
-  // HDR tone mapping
-  if (aiSettings && aiSettings.hdr) {
-    imageData = applyHDRToneMap(imageData, w, h);
-  }
-
-  ctx.putImageData(imageData, 0, 0);
-
-  // object hide (privacy blur) using saved rect (relative coords)
-  if (aiSettings && aiSettings.objectHide && enhHideBox) {
-    const boxPx = {
-      x: Math.round(enhHideBox.xRel * w),
-      y: Math.round(enhHideBox.yRel * h),
-      width: Math.round(enhHideBox.wRel * w),
-      height: Math.round(enhHideBox.hRel * h)
-    };
-    blurRegionOnCanvas(ctx, boxPx);
-  }
-}
-
-/* simple blur (used for denoise & region blur) */
-
-function gaussianBlur(imageData, w, h) {
-  const src = imageData.data;
-  const out = new Uint8ClampedArray(src.length);
-
-  const kernel = [1, 2, 1,
-                  2, 4, 2,
-                  1, 2, 1];
-  const idx = (x, y) => (y * w + x) * 4;
-
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      let r = 0, g = 0, b = 0, a = 0, kSum = 0;
-      for (let ky = -1; ky <= 1; ky++) {
-        for (let kx = -1; kx <= 1; kx++) {
-          const ix = x + kx;
-          const iy = y + ky;
-          const wgt = kernel[(ky + 1) * 3 + (kx + 1)];
-          const base = idx(ix, iy);
-          r += src[base] * wgt;
-          g += src[base + 1] * wgt;
-          b += src[base + 2] * wgt;
-          a += src[base + 3] * wgt;
-          kSum += wgt;
-        }
-      }
-      const o = idx(x, y);
-      out[o] = r / kSum;
-      out[o + 1] = g / kSum;
-      out[o + 2] = b / kSum;
-      out[o + 3] = a / kSum;
-    }
-  }
-
-  imageData.data.set(out);
-  return imageData;
-}
-
-/* simple sharpen */
-
-function sharpen(imageData, w, h) {
-  const src = imageData.data;
-  const out = new Uint8ClampedArray(src.length);
-
-  const kernel = [ 0, -1,  0,
-                  -1,  5, -1,
-                   0, -1,  0 ];
-  const idx = (x, y) => (y * w + x) * 4;
-
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      let r = 0, g = 0, b = 0, a = 0;
-      for (let ky = -1; ky <= 1; ky++) {
-        for (let kx = -1; kx <= 1; kx++) {
-          const ix = x + kx;
-          const iy = y + ky;
-          const wgt = kernel[(ky + 1) * 3 + (kx + 1)];
-          const base = idx(ix, iy);
-          r += src[base] * wgt;
-          g += src[base + 1] * wgt;
-          b += src[base + 2] * wgt;
-          a += src[base + 3] * wgt;
-        }
-      }
-      const o = idx(x, y);
-      out[o] = Math.max(0, Math.min(255, r));
-      out[o + 1] = Math.max(0, Math.min(255, g));
-      out[o + 2] = Math.max(0, Math.min(255, b));
-      out[o + 3] = Math.max(0, Math.min(255, a));
-    }
-  }
-
-  imageData.data.set(out);
-  return imageData;
-}
-
-/* OCR / text clarity — local contrast + stronger edge sharpening */
-
-function applyOCRBoost(imageData, w, h) {
-  const src = imageData.data;
-  const out = new Uint8ClampedArray(src.length);
-
-  const kernel = [ 0, -1,  0,
-                  -1,  5.2, -1,
-                   0, -1,  0 ];
-  const idx = (x, y) => (y * w + x) * 4;
-
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      let r = 0, g = 0, b = 0, a = 0;
-      for (let ky = -1; ky <= 1; ky++) {
-        for (let kx = -1; kx <= 1; kx++) {
-          const ix = x + kx;
-          const iy = y + ky;
-          const wgt = kernel[(ky + 1) * 3 + (kx + 1)];
-          const base = idx(ix, iy);
-          r += src[base] * wgt;
-          g += src[base + 1] * wgt;
-          b += src[base + 2] * wgt;
-          a += src[base + 3] * wgt;
-        }
-      }
-      const o = idx(x, y);
-      out[o] = Math.max(0, Math.min(255, r));
-      out[o + 1] = Math.max(0, Math.min(255, g));
-      out[o + 2] = Math.max(0, Math.min(255, b));
-      out[o + 3] = Math.max(0, Math.min(255, a));
-    }
-  }
-
-  imageData.data.set(out);
-  return imageData;
-}
-
-/* HDR tone mapping — lift shadows, compress highlights */
-
-function applyHDRToneMap(imageData, w, h) {
-  const d = imageData.data;
-  for (let i = 0; i < d.length; i += 4) {
-    for (let c = 0; c < 3; c++) {
-      let v = d[i + c];
-      if (v < 60) {
-        v = v + 22;            // lift shadows
-      } else if (v > 210) {
-        v = 210 + (v - 210) * 0.6; // compress highlights
-      }
-      d[i + c] = v < 0 ? 0 : (v > 255 ? 255 : v);
-    }
-  }
-  return imageData;
-}
-
-/* blur region on canvas (for object hide) */
-
-function blurRegionOnCanvas(ctx, box) {
-  const { x, y, width, height } = box;
-  if (width <= 0 || height <= 0) return;
-  const region = ctx.getImageData(x, y, width, height);
-  const blurred = gaussianBlur(region, width, height);
-  ctx.putImageData(blurred, x, y);
-}
-
-/* enhancer quality slider */
-
-enhQuality.addEventListener("input", () => {
-  enhQualityVal.textContent = enhQuality.value + "%";
-});
-
-/* Enhance & Download / Preview */
-
-async function runEnhancer(previewOnly = false) {
-  if (!enhanceFile) {
-    alert("Upload an image first.");
-    return;
-  }
-
-  const aiSettings = getEnhSettings();
-  if (!aiSettings) {
-    if (!confirm("No AI options selected. Apply default light sharpening & contrast?")) {
-      return;
-    }
-  }
-
-  const q = parseInt(enhQuality.value, 10) || 92;
-
-  enhStatus.textContent = "Preparing image...";
-  enhProgress.style.width = "10%";
-
-  const img = new Image();
-  const url = URL.createObjectURL(enhanceFile);
-  img.src = url;
-
-  await new Promise(r => { img.onload = r; img.onerror = r; });
-
-  const canvas = document.createElement("canvas");
-  canvas.width = img.naturalWidth;
-  canvas.height = img.naturalHeight;
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0);
-
-  enhStatus.textContent = "Applying smart enhancements...";
-  enhProgress.style.width = "60%";
-
-  if (aiSettings) {
-    applyEnhancementsToCanvas(canvas, ctx, aiSettings);
-  } else {
-    applyEnhancementsToCanvas(canvas, ctx, {}); // default light
-  }
-
-  enhStatus.textContent = "Encoding output...";
-  enhProgress.style.width = "90%";
-
-  const blob = await new Promise(res =>
-    canvas.toBlob(
-      b => res(b),
-      "image/jpeg",
-      Math.max(0.1, Math.min(1, q / 100))
-    )
-  );
-
-  URL.revokeObjectURL(url);
-
-  if (previewOnly) {
-    revokeIfBlobUrl(beforeImg);
-    revokeIfBlobUrl(afterImg);
-
-    beforeImg.src = URL.createObjectURL(enhanceFile);
-    afterImg.src = URL.createObjectURL(blob);
-
-    previewTitle.textContent = enhanceFile.name + " (Enhanced Preview)";
-    previewInfo.textContent = `${canvas.width}×${canvas.height} • ${q}%`;
-    previewModal.style.display = "flex";
-    afterLayer.style.width = "50%";
-    handle.style.left = "50%";
-
-    enhStatus.textContent = "Preview ready.";
-    enhProgress.style.width = "100%";
-  } else {
-    const outName = enhanceFile.name.replace(/\.[^.]+$/, "") + "_enhanced.jpg";
-    createDownload(blob, outName);
-    enhStatus.textContent = "Enhanced image downloaded.";
-    enhProgress.style.width = "100%";
-  }
-}
-
-/* enhancer buttons */
-
-enhPreviewBtn.addEventListener("click", () => runEnhancer(true));
-enhRunBtn.addEventListener("click", () => runEnhancer(false));
-
-/* ------------------------------
-   OBJECT HIDE MODAL (OH1 rectangle)
------------------------------- */
-
-const hideModal = $("hideModal");
-const hidePreview = $("hidePreview");
-const hideCanvas = $("hideCanvas");
-const hideRect = $("hideRect");
-const saveHide = $("saveHide");
-const clearHide = $("clearHide");
-const closeHide = $("closeHide");
-
-let hideRectVisible = false;
-let hideDragState = { dragging: false, resizing: false, startX: 0, startY: 0, startLeft: 0, startTop: 0, startW: 0, startH: 0 };
-
-hideAreaBtn.addEventListener("click", () => {
-  if (!enhanceFile) {
-    alert("Upload an image first.");
-    return;
-  }
-  openHideModal();
-});
-
-function openHideModal() {
-  hideModal.style.display = "flex";
-  hideRect.style.display = "none";
-  hideRectVisible = false;
-
-  revokeIfBlobUrl(hidePreview);
-  const url = URL.createObjectURL(enhanceFile);
-  hidePreview.src = url;
-
-  hidePreview.onload = () => {
-    const imgRect = hidePreview.getBoundingClientRect();
-    requestAnimationFrame(() => {
-      const w = Math.max(80, imgRect.width * 0.3);
-      const h = Math.max(80, imgRect.height * 0.2);
-      const cx = imgRect.left + imgRect.width / 2;
-      const cy = imgRect.top + imgRect.height / 2;
-      setHideRectFromCenter(cx, cy, w, h);
-      hideRect.style.display = "block";
-      hideRectVisible = true;
-    });
-  };
-}
-
-function setHideRectFromCenter(cx, cy, w, h) {
-  const c = hideCanvas.getBoundingClientRect();
-  let left = cx - w / 2, top = cy - h / 2;
-
-  if (left < c.left) left = c.left;
-  if (top < c.top) top = c.top;
-  if (left + w > c.right) left = c.right - w;
-  if (top + h > c.bottom) top = c.bottom - h;
-
-  hideRect.style.left = (left - c.left) + "px";
-  hideRect.style.top = (top - c.top) + "px";
-  hideRect.style.width = w + "px";
-  hideRect.style.height = h + "px";
-}
-
-/* drag & resize hide rect */
-
-hideRect.addEventListener("mousedown", e => {
-  if (e.target.classList.contains("focus-handle")) return;
-  const r = hideRect.getBoundingClientRect();
-  const c = hideCanvas.getBoundingClientRect();
-  hideDragState.dragging = true;
-  hideDragState.startX = e.clientX;
-  hideDragState.startY = e.clientY;
-  hideDragState.startLeft = r.left - c.left;
-  hideDragState.startTop = r.top - c.top;
-  hideDragState.startW = r.width;
-  hideDragState.startH = r.height;
-  e.preventDefault();
-});
-
-hideRect.querySelector(".focus-handle").addEventListener("mousedown", e => {
-  hideDragState.resizing = true;
-  hideDragState.startX = e.clientX;
-  hideDragState.startY = e.clientY;
-  const r = hideRect.getBoundingClientRect();
-  hideDragState.startW = r.width;
-  hideDragState.startH = r.height;
-  e.preventDefault();
-});
-
-document.addEventListener("mousemove", e => {
-  const c = hideCanvas.getBoundingClientRect();
-
-  if (hideDragState.dragging && hideRectVisible) {
-    const dx = e.clientX - hideDragState.startX;
-    const dy = e.clientY - hideDragState.startY;
-    let L = hideDragState.startLeft + dx;
-    let T = hideDragState.startTop + dy;
-    L = Math.max(0, Math.min(c.width - hideDragState.startW, L));
-    T = Math.max(0, Math.min(c.height - hideDragState.startH, T));
-    hideRect.style.left = L + "px";
-    hideRect.style.top = T + "px";
-  }
-
-  if (hideDragState.resizing && hideRectVisible) {
-    const dx = e.clientX - hideDragState.startX;
-    const dy = e.clientY - hideDragState.startY;
-    let W = Math.max(40, hideDragState.startW + dx);
-    let H = Math.max(40, hideDragState.startH + dy);
-    W = Math.min(W, c.width);
-    H = Math.min(H, c.height);
-    hideRect.style.width = W + "px";
-    hideRect.style.height = H + "px";
-  }
-});
-
-document.addEventListener("mouseup", () => {
-  hideDragState.dragging = false;
-  hideDragState.resizing = false;
-});
-
-hideCanvas.addEventListener("dblclick", e => {
-  const imgRect = hidePreview.getBoundingClientRect();
-  if (!imgRect.width) return;
-  let x = e.clientX, y = e.clientY;
-  if (x < imgRect.left) x = imgRect.left;
-  if (x > imgRect.right) x = imgRect.right;
-  if (y < imgRect.top) y = imgRect.top;
-  if (y > imgRect.bottom) y = imgRect.bottom;
-
-  const r = hideRect.getBoundingClientRect();
-  setHideRectFromCenter(x, y, r.width || 120, r.height || 80);
-});
-
-function saveHideBox() {
-  const rect = hideRect.getBoundingClientRect();
-  const img = hidePreview.getBoundingClientRect();
-  if (!img.width || !img.height) return;
-
-  const xRel = (rect.left - img.left) / img.width;
-  const yRel = (rect.top - img.top) / img.height;
-  const wRel = rect.width / img.width;
-  const hRel = rect.height / img.height;
-
-  enhHideBox = {
-    xRel: Math.max(0, Math.min(1, xRel)),
-    yRel: Math.max(0, Math.min(1, yRel)),
-    wRel: Math.max(0, Math.min(1, wRel)),
-    hRel: Math.max(0, Math.min(1, hRel))
-  };
-}
-
-saveHide.addEventListener("click", () => {
-  if (!hideRectVisible) return alert("Drag the rectangle first.");
-  saveHideBox();
-  alert("Hide area saved.");
-});
-
-clearHide.addEventListener("click", () => {
-  enhHideBox = null;
-  hideRect.style.display = "none";
-  hideRectVisible = false;
-});
-
-closeHide.addEventListener("click", () => {
-  hideModal.style.display = "none";
-  revokeIfBlobUrl(hidePreview);
-});
-
-/* ------------------------------
-   TOOLTIP LOGIC
------------------------------- */
-
-document.querySelectorAll(".help-tip").forEach(el => {
-  const tooltip = document.createElement("div");
-  tooltip.className = "tooltip-box";
-  tooltip.textContent = el.getAttribute("data-tip") || "";
-  document.body.appendChild(tooltip);
-
-  el.addEventListener("mouseenter", () => {
-    if (!tooltip.textContent) return;
-    tooltip.style.display = "block";
-    const r = el.getBoundingClientRect();
-    tooltip.style.left = (r.left + window.scrollX) + "px";
-    tooltip.style.top = (r.bottom + 8 + window.scrollY) + "px";
-  });
-
-  el.addEventListener("mouseleave", () => {
-    tooltip.style.display = "none";
-  });
-});
-
-/* ------------------------------
-   ABOUT MODAL LOGIC
------------------------------- */
-
-const aboutBtn = $("aboutBtn");
+/* NAV */
+$("btnResize").addEventListener("click",()=>showSection("resize"));
+$("btnEnhance").addEventListener("click",()=>showSection("enhance"));
+$("backHome1").addEventListener("click",()=>showSection("home"));
+$("backHome2").addEventListener("click",()=>showSection("home"));
+
+/* ABOUT MODAL */
 const aboutModal = $("aboutModal");
-const closeAbout = $("closeAbout");
+$("btnAbout").addEventListener("click",()=>aboutModal.style.display="flex");
+$("closeAbout").addEventListener("click",()=>aboutModal.style.display="none");
 
-if (aboutBtn && aboutModal && closeAbout) {
-  aboutBtn.addEventListener("click", () => {
-    aboutModal.style.display = "flex";
-  });
+/* ===============================
+   AI ENHANCER
+================================ */
 
-  closeAbout.addEventListener("click", () => {
-    aboutModal.style.display = "none";
-  });
-}
+let enhanceFiles = [];
+let enhanceCanvas = $("enhanceCanvas");
+let enhanceCtx = enhanceCanvas.getContext("2d");
+let enhancePreview = $("enhancePreview");
+let hideRect = null;
 
-/* ------------------------------
-   MISC
------------------------------- */
+const enhanceOCR = $("enhanceOCR");
+const enhanceHDR = $("enhanceHDR");
+const enhanceHide = $("enhanceHide");
+const enhanceApplyBtn = $("enhanceApply");
 
-imgQuality.addEventListener("input", () => {
-  imgQualityVal.textContent = imgQuality.value + "%";
+/* Select File */
+$("enhanceInput").addEventListener("change", async e => {
+  enhanceFiles = Array.from(e.target.files);
+  if(!enhanceFiles.length) return;
+  await loadEnhanceImage(enhanceFiles[0]);
 });
 
-/* INIT */
+async function loadEnhanceImage(file){
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = url;
+  await img.decode();
 
-updateSwitchLabel();
-if (!isAuthed()) {
-  // keep modal visible until password
-} else {
-  showSection("home");
+  enhanceCanvas.width = img.width;
+  enhanceCanvas.height = img.height;
+
+  enhanceCtx.drawImage(img,0,0);
+  enhancePreview.src = url;
+
+  hideRect = null;
+}
+
+/* APPLY ENHANCEMENTS */
+enhanceApplyBtn.addEventListener("click",()=>{
+  if(!enhanceCanvas.width) return alert("Upload an image first!");
+
+  let imgData = enhanceCtx.getImageData(0,0,enhanceCanvas.width,enhanceCanvas.height);
+
+  if(enhanceOCR.checked) imgData = applyOCRBoost(imgData);
+  if(enhanceHDR.checked) imgData = applyHDRToneMap(imgData);
+
+  enhanceCtx.putImageData(imgData,0,0);
+
+  if(enhanceHide.checked && hideRect){
+    blurRegionOnCanvas(enhanceCtx, hideRect);
+  }
+
+  enhancePreview.src = enhanceCanvas.toDataURL("image/jpeg",0.92);
+});
+
+/* ===============================
+   AI FILTERS
+================================ */
+
+/* --- E: OCR MODE --- */
+function applyOCRBoost(imageData){
+  const d = imageData.data;
+  const w = imageData.width, h = imageData.height;
+  for(let i = 0; i < d.length; i+=4){
+    let avg = (d[i]+d[i+1]+d[i+2]) / 3;
+    let boost = avg > 128 ? 1.1 : 1.25;
+    d[i] *= boost; d[i+1] *= boost; d[i+2] *= boost;
+  }
+  return imageData;
+}
+
+/* --- F: HDR TONE MAP --- */
+function applyHDRToneMap(imageData){
+  const d = imageData.data;
+  for(let i=0;i<d.length;i+=4){
+    d[i] = tone(d[i]);
+    d[i+1] = tone(d[i+1]);
+    d[i+2] = tone(d[i+2]);
+  }
+  return imageData;
+}
+function tone(v){
+  const shadows = 0.18, highlight = 0.85;
+  if(v < 100) return v * 1.25;   // lift shadows
+  if(v > 180) return v * 0.85;   // compress highlights
+  return v;
+}
+
+/* --- H: OBJECT HIDE BLUR AREA --- */
+function blurRegionOnCanvas(ctx, box){
+  const { x, y, width, height } = box;
+  if(width<=0 || height<=0) return;
+
+  let region = ctx.getImageData(x,y,width,height);
+
+  const passes = 7; // 💥 EDIT BLUR STRENGTH HERE
+  for(let i=0;i<passes;i++){
+    region = gaussianBlur(region,width,height);
+  }
+
+  ctx.putImageData(region,x,y);
+}
+
+/* Gaussian blur kernel */
+function gaussianBlur(imgData,w,h){
+  const weights=[0.1201,0.2339,0.2920,0.2339,0.1201];
+  const side=5;
+  const half=2;
+  const d=imgData.data;
+  const tmp = new Uint8ClampedArray(d);
+
+  // horizontal
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      let r=0,g=0,b=0;
+      for(let k=-half;k<=half;k++){
+        const px = Math.min(w-1,Math.max(0,x+k));
+        const idx = (y*w+px)*4;
+        const wgt=weights[k+half];
+        r+=tmp[idx]*wgt;
+        g+=tmp[idx+1]*wgt;
+        b+=tmp[idx+2]*wgt;
+      }
+      const id = (y*w+x)*4;
+      d[id]=r; d[id+1]=g; d[id+2]=b;
+    }
+  }
+  return imgData;
+}
+
+/* ===============================
+   OBJECT HIDE RECTANGLE UI
+================================ */
+
+const hideBox = $("hideBox");
+let dragging=false, startX=0, startY=0;
+
+$("enhanceCanvas").addEventListener("mousedown",e=>{
+  if(!enhanceHide.checked) return;
+
+  dragging=true;
+  startX=e.offsetX; startY=e.offsetY;
+  hideRect={x:startX,y:startY,width:0,height:0};
+
+  hideBox.style.display="block";
+});
+$("enhanceCanvas").addEventListener("mousemove",e=>{
+  if(!dragging) return;
+  const w=e.offsetX-startX, h=e.offsetY-startY;
+  hideRect={x:startX,y:startY,width:w,height:h};
+  positionHideBox();
+});
+document.addEventListener("mouseup",()=> dragging=false);
+
+function positionHideBox(){
+  hideBox.style.left = hideRect.x+"px";
+  hideBox.style.top = hideRect.y+"px";
+  hideBox.style.width = hideRect.width+"px";
+  hideBox.style.height = hideRect.height+"px";
 }
