@@ -8,7 +8,6 @@
 </head>
 
 <body>
-
   <div class="app-wrap">
 
     <!-- TOP BAR -->
@@ -45,7 +44,7 @@
       <div class="tool-card" id="btnImage">
         <div class="icon">🖼️</div>
         <h3>Image Tools</h3>
-        <p>Resize • Smart Center • Human Detection • ZIP export</p>
+        <p>Resize • Smart Center • Human Detection • (No ZIP)</p>
       </div>
 
       <div class="tool-card" id="btnEnhancer">
@@ -74,7 +73,7 @@
       </div>
 
       <div class="panel">
-        <div id="dropImage" class="dropzone">
+        <div id="dropImage" class="dropzone" data-tip="Click or drop multiple images for scan-only human detection.">
           Click or drag & drop images here (multiple)
         </div>
         <input id="imageInput" type="file" accept="image/*" multiple>
@@ -89,14 +88,14 @@
         <div class="controls">
           <div class="mini-control">
             <label>Quality</label>
-            <div class="help-tip" data-tip="Higher quality = better clarity but heavier file size. 90% works well for most LMS assets.">?</div>
+            <div class="help-tip" data-tip="Higher quality -> larger file. 90% is a good default for LMS assets.">?</div>
           </div>
           <input id="imgQuality" type="range" min="60" max="100" value="90">
           <span id="imgQualityVal">90%</span>
 
           <div class="flex-spacer"></div>
 
-          <div id="imgAiToggle" class="ai-switch" title="Smart Human Detection">
+          <div id="imgAiToggle" class="ai-switch" title="Smart Human Detection" data-tip="Toggle smart detection for batch actions.">
             <div class="track"><div class="ball"></div></div>
             <span class="label-off">Smart Detection: OFF</span>
             <span class="label-on">Smart Detection: ON</span>
@@ -104,9 +103,8 @@
         </div>
 
         <div class="btn-row">
-          <button id="imgPreviewBtn" class="btn ghost">Preview First</button>
-          <button id="focusBtn" class="btn ghost">Manual Focus</button>
-          <button id="imgProcessBtn" class="btn primary">Process & Download ZIP</button>
+          <button id="imgPreviewBtn" class="btn ghost" data-tip="Preview the first image (if available)">Preview First</button>
+          <button id="focusBtn" class="btn ghost" data-tip="Open Manual Focus tool">Manual Focus</button>
         </div>
 
         <div class="progress"><div id="imgProgress" class="bar"></div></div>
@@ -131,7 +129,7 @@
       <div class="panel enhancer-layout">
         <div class="enh-left">
           <h3 class="panel-title">Upload Image</h3>
-          <div id="dropEnhance" class="dropzone">
+          <div id="dropEnhance" class="dropzone" data-tip="Single image for enhancement/annotation.">
             Click or drag & drop a single image
           </div>
           <input id="enhanceInput" type="file" accept="image/*">
@@ -147,21 +145,27 @@
           <div class="ai-panel">
             <div class="ai-panel-header">
               <span class="label">Smart Enhancements (processed locally)</span>
-              <div class="help-tip" data-tip="These processors work directly in your browser using Canvas. No upload, no server, safe for internal projects.">?</div>
+              <div class="help-tip" data-tip="Work happens in your browser using Canvas. No upload, no server.">?</div>
             </div>
 
             <div class="ai-options">
-              <label class="ai-option"><input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span></label>
-              <label class="ai-option"><input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span></label>
-              <label class="ai-option"><input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span></label>
-              <label class="ai-option"><input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span></label>
-              <label class="ai-option"><input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span></label>
-              <label class="ai-option"><input type="checkbox" id="enhHDR"><span>HDR Boost (Shadows & Highlights)</span></label>
-              <label class="ai-option"><input type="checkbox" id="enhHide"><span>Object Hide / Privacy Blur</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span><div class="help-tip" data-tip="Enlarge image 2× with a simple interpolation + sharpen pass."></div></label>
+
+              <label class="ai-option"><input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span><div class="help-tip" data-tip="Enlarge image 4× (heavier). Use only if needed."></div></label>
+
+              <label class="ai-option"><input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span><div class="help-tip" data-tip="Apply edge-preserving sharpening for faces and UI elements."></div></label>
+
+              <label class="ai-option"><input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span><div class="help-tip" data-tip="Remove light noise, then apply gentle unsharp mask."></div></label>
+
+              <label class="ai-option"><input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span><div class="help-tip" data-tip="Boost contrast and clarity around small text for better legibility."></div></label>
+
+              <label class="ai-option"><input type="checkbox" id="enhHDR"><span>HDR Boost (Shadows & Highlights)</span><div class="help-tip" data-tip="Lift shadows and compress highlights to reveal details across tones."></div></label>
+
+              <label class="ai-option"><input type="checkbox" id="enhHide"><span>Object Hide / Privacy Blur</span><div class="help-tip" data-tip="Select an area to blur (faces, IDs, logos). Use Set Hide Area to define region."></div></label>
             </div>
 
             <div class="btn-row small-row">
-              <button id="hideAreaBtn" class="btn ghost">Set Hide Area</button>
+              <button id="hideAreaBtn" class="btn ghost" data-tip="Open mask editor to set blur rectangle">Set Hide Area</button>
             </div>
 
             <p class="ai-note">
@@ -173,15 +177,15 @@
           <div class="two-input">
             <div class="mini-control">
               <label class="small-label">Output Quality</label>
-              <div class="help-tip" data-tip="Controls JPEG export quality. 92% is a sweet spot between clarity and file size.">?</div>
+              <div class="help-tip" data-tip="Controls JPEG export quality. 92% is a sweet spot.">?</div>
               <input id="enhQuality" type="range" min="70" max="100" value="92">
               <span id="enhQualityVal" class="mini-val">92%</span>
             </div>
           </div>
 
           <div class="btn-row">
-            <button id="enhPreviewBtn" class="btn ghost">Preview</button>
-            <button id="enhRunBtn" class="btn primary">Enhance & Download</button>
+            <button id="enhPreviewBtn" class="btn ghost" data-tip="Update inline preview with current enhanced image">Preview</button>
+            <button id="enhRunBtn" class="btn primary" data-tip="Apply filters, merge annotations and download">Enhance & Download</button>
           </div>
 
           <div class="progress"><div id="enhProgress" class="bar"></div></div>
@@ -194,7 +198,9 @@
         <div class="panel-title">Annotate / Preview</div>
 
         <div id="previewArea" class="preview-area" aria-hidden="true">
-          <img id="beforeImg" alt="Before" />
+          <!-- before (original image) -->
+          <img id="beforeImg" alt="Before" src="/mnt/data/ee5ca6b2-da36-420c-8359-ec00b9cba47b.png" />
+          <!-- after layer (enhanced) -->
           <div id="afterLayer" class="after-layer"><img id="afterImg" alt="After" /></div>
 
           <!-- Annotation canvas overlays the preview area -->
@@ -210,6 +216,7 @@
             <button class="anno-btn" data-tool="text">Text</button>
             <button class="anno-btn" data-tool="highlight">Highlight</button>
             <button class="anno-btn" data-tool="blur">Blur area</button>
+            <button class="anno-btn" data-tool="free">Freehand</button>
             <button class="anno-btn" id="annUndo">Undo</button>
             <button class="anno-btn" id="annClear">Clear</button>
             <label class="anno-control">Color <input id="annColor" type="color" value="#ff7a3c"></label>
@@ -219,11 +226,9 @@
           <div class="small muted" style="margin-top:8px">Draw on the image, then click Apply to merge annotations to the current enhanced image (client-only).</div>
         </div>
       </div>
-
     </section>
 
     <footer class="footer" style="margin-top:18px">Created by Mukesh Yadav • META E-learning Team</footer>
-
   </div>
 
   <!-- THEME MODAL -->
@@ -257,19 +262,19 @@
         <div class="about-col">
           <h4>What it does</h4>
           <ul>
-            <li>Batch resize with smart human detection</li>
+            <li>Batch resize with smart human detection (scan-only)</li>
             <li>Manual focus cropping for key subjects</li>
             <li>AI-style enhancement (upscale, sharpen, denoise)</li>
-            <li>ZIP export for quick LMS uploads</li>
+            <li>Inline annotation + privacy blur</li>
           </ul>
         </div>
         <div class="about-col">
           <h4>Safety & workflow</h4>
           <ul>
             <li>All processing stays inside your browser</li>
-            <li>No uploads, no cloud, safe for confidential assets</li>
+            <li>No uploads, no cloud — safe for confidential assets</li>
             <li>Designed for META e-learning & media teams</li>
-            <li>Ideal for ILTs, WBTs, storyboards & thumbnails</li>
+            <li>Use the Preview button to validate changes before applying</li>
           </ul>
         </div>
       </div>
@@ -283,7 +288,6 @@
   <!-- LIBRARIES -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
   <!-- MAIN SCRIPT -->
   <script src="script_v.js"></script>
