@@ -1,10 +1,7 @@
 /* ----------------------------------------------------
-   Meta Media Hub — Image Tools Only (Video Removed)
-   ---------------------------------------------------- */
+   Meta Media Hub — Image Tools + AI Enhancer
+---------------------------------------------------- */
 
-/* ------------------------------
-   Utilities
-   ------------------------------ */
 const $ = id => document.getElementById(id);
 
 const createDownload = (blob, name) => {
@@ -23,8 +20,9 @@ const revokeIfBlobUrl = (el) => {
 };
 
 /* ------------------------------
-   Theme toggle
-   ------------------------------ */
+   THEME TOGGLE
+------------------------------ */
+
 const themeToggle = $("themeToggle");
 const THEME_KEY = "mm_theme_v1";
 
@@ -34,30 +32,37 @@ function applyTheme(theme) {
   themeToggle.textContent = theme === "light" ? "☀️" : "🌙";
   localStorage.setItem(THEME_KEY, theme);
 }
+
 themeToggle.addEventListener("click", () => {
-  const cur = localStorage.getItem(THEME_KEY) || "dark";
-  applyTheme(cur === "dark" ? "light" : "dark");
+  const current = localStorage.getItem(THEME_KEY) || "dark";
+  applyTheme(current === "dark" ? "light" : "dark");
 });
+
 applyTheme(localStorage.getItem(THEME_KEY) || "dark");
 
 /* ------------------------------
-   Auth
-   ------------------------------ */
-const pwModal = $("pwModal"),
-      pwInput = $("pwInput"),
-      pwBtn = $("pwBtn"),
-      pwMsg = $("pwMsg"),
-      statusText = $("statusText");
+   AUTH
+------------------------------ */
 
+const pwModal = $("pwModal");
+const pwInput = $("pwInput");
+const pwBtn = $("pwBtn");
+const pwMsg = $("pwMsg");
+const statusText = $("statusText");
 const AUTH_KEY = "mm_auth_v1";
 const PASSWORD = "Meta@123";
 
-function saveAuth(v){ v ? localStorage.setItem(AUTH_KEY,"true") : localStorage.removeItem(AUTH_KEY); }
-function isAuthed(){ return localStorage.getItem(AUTH_KEY)==="true"; }
+function saveAuth(v) {
+  v ? localStorage.setItem(AUTH_KEY, "true") : localStorage.removeItem(AUTH_KEY);
+}
+function isAuthed() {
+  return localStorage.getItem(AUTH_KEY) === "true";
+}
 
-async function unlock(){
-  if(pwInput.value === PASSWORD){
+async function unlock() {
+  if (pwInput.value === PASSWORD) {
     saveAuth(true);
+    pwInput.value = "";
     pwMsg.textContent = "";
     pwModal.style.display = "none";
     showSection("home");
@@ -66,31 +71,57 @@ async function unlock(){
     pwMsg.textContent = "Incorrect password";
   }
 }
-pwBtn.addEventListener("click", unlock);
-pwInput.addEventListener("keydown", e => { if(e.key==="Enter") unlock(); });
 
-if(isAuthed()){
+pwBtn.addEventListener("click", unlock);
+pwInput.addEventListener("keydown", e => { if (e.key === "Enter") unlock(); });
+
+if (isAuthed()) {
   pwModal.style.display = "none";
   showSection("home");
 }
 
 /* ------------------------------
-   UI Navigation (Video Removed)
-   ------------------------------ */
-function showSection(name){
-  $("home").style.display = name==="home" ? "flex" : "none";
-  $("imageSection").style.display = name==="image" ? "block" : "none";
-  statusText.textContent =
-    name==="home" ? "Choose workflow" :
-    name==="image" ? "Image tools" : "";
+   SECTION NAVIGATION
+------------------------------ */
+
+const homeSection = $("home");
+const imageSection = $("imageSection");
+const enhancerSection = $("enhancerSection");
+
+function activateSection(sec) {
+  [homeSection, imageSection, enhancerSection].forEach(s => {
+    if (!s) return;
+    s.classList.remove("active");
+    s.style.display = "none";
+  });
+  if (!sec) return;
+  sec.style.display = sec === homeSection ? "flex" : "block";
+  // small delay for transition
+  requestAnimationFrame(() => sec.classList.add("active"));
 }
 
-$("btnImage").addEventListener("click", ()=> showSection("image"));
-$("backHomeFromImage").addEventListener("click", ()=> showSection("home"));
+function showSection(name) {
+  if (name === "home") {
+    activateSection(homeSection);
+    statusText.textContent = "Choose tool";
+  } else if (name === "image") {
+    activateSection(imageSection);
+    statusText.textContent = "Image tools";
+  } else if (name === "enhancer") {
+    activateSection(enhancerSection);
+    statusText.textContent = "AI Enhancer";
+  }
+}
+
+$("btnImage").addEventListener("click", () => showSection("image"));
+$("btnEnhancer").addEventListener("click", () => showSection("enhancer"));
+$("backHomeFromImage").addEventListener("click", () => showSection("home"));
+$("backHomeFromEnhancer").addEventListener("click", () => showSection("home"));
 
 /* ------------------------------
-   Image Tool Variables
-   ------------------------------ */
+   IMAGE TOOLS (RESIZER)
+------------------------------ */
+
 let imageFiles = [];
 let imageDetectionMap = {};
 let imageFocusMap = {};
@@ -115,471 +146,828 @@ const smartBanner = $("smartBanner");
 const bannerIcon = $("bannerIcon");
 const bannerText = $("bannerText");
 
-/* ------------------------------
-   Image Upload
-   ------------------------------ */
+/* Drag & drop for resizer */
+
 dropImage.addEventListener("click", () => imageInput.click());
+
 imageInput.addEventListener("change", async e => {
   imageFiles = Array.from(e.target.files);
   await handleNewImages();
 });
 
-dropImage.addEventListener("dragover", e => { e.preventDefault(); dropImage.style.background='rgba(255,255,255,0.05)'; });
-dropImage.addEventListener("dragleave", () => dropImage.style.background='');
+dropImage.addEventListener("dragover", e => {
+  e.preventDefault();
+  dropImage.style.background = "rgba(255,255,255,0.04)";
+});
+
+dropImage.addEventListener("dragleave", () => {
+  dropImage.style.background = "transparent";
+});
+
 dropImage.addEventListener("drop", async e => {
   e.preventDefault();
-  dropImage.style.background='';
+  dropImage.style.background = "transparent";
   imageFiles = Array.from(e.dataTransfer.files);
   await handleNewImages();
 });
 
-/* ------------------------------
-   File List UI
-   ------------------------------ */
-function refreshImageList(){
-  if(!imageFiles.length){
+/* file list UI */
+
+function refreshImageList() {
+  if (!imageFiles.length) {
     imageFileList.innerHTML = "No files uploaded.";
     smartBanner.style.display = "none";
     return;
   }
-  imageFileList.innerHTML = imageFiles.map((f,i)=>{
+
+  imageFileList.innerHTML = imageFiles.map((f, i) => {
     const st = imageDetectionMap[f.name] || "unknown";
-    const icon = st==="person" ? "👤" : st==="none" ? "❌" : "⏳";
-    const label = st==="person" ? "Human Found" : st==="none" ? "No Person" : "Scanning…";
+    let icon = "⏳", label = "Scanning…";
+    if (st === "person") { icon = "👤"; label = "Human Found"; }
+    else if (st === "none") { icon = "❌"; label = "No Person"; }
+
     return `
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
         <span class="file-icon">${icon}</span>
         <div>
-          <strong>${i+1}.</strong> ${f.name}
-          <div class="small" style="color:var(--muted)">${label} • ${Math.round(f.size/1024)} KB</div>
+          <strong>${i + 1}.</strong> ${f.name}
+          <div style="font-size:12px;color:var(--muted);">
+            ${label} • ${(f.size / 1024).toFixed(1)} KB
+          </div>
         </div>
-      </div>`;
+      </div>
+    `;
   }).join("");
 }
 
-/* ------------------------------
-   Smart Detection Model
-   ------------------------------ */
-async function loadModel(){
-  if(cocoModel) return cocoModel;
+/* Model load & detection */
+
+async function loadModel() {
+  if (cocoModel) return cocoModel;
   imgStatus.textContent = "Downloading detection model…";
   cocoModel = await cocoSsd.load();
   imgStatus.textContent = "Model ready";
   return cocoModel;
 }
 
-async function detectPerson(imgEl){
-  try{
+async function detectPerson(imgEl) {
+  try {
     await loadModel();
     const preds = await cocoModel.detect(imgEl);
-    return preds.some(p => p.class==="person");
-  } catch { return false; }
+    return preds.some(p => p.class === "person");
+  } catch {
+    return false;
+  }
 }
 
-async function detectPersonBox(imgEl){
-  try{
+async function detectPersonBox(imgEl) {
+  try {
     await loadModel();
     const preds = await cocoModel.detect(imgEl);
     const persons = preds.filter(p => p.class === "person");
-    if(!persons.length) return null;
-    let best = persons[0], area = best.bbox[2]*best.bbox[3];
-    for(const p of persons){
-      const a = p.bbox[2]*p.bbox[3];
-      if(a > area){ best = p; area = a; }
+    if (!persons.length) return null;
+
+    let best = persons[0];
+    let area = best.bbox[2] * best.bbox[3];
+    for (const p of persons) {
+      const a = p.bbox[2] * p.bbox[3];
+      if (a > area) { best = p; area = a; }
     }
-    const [x,y,w,h] = best.bbox;
-    return { x, y, width:w, height:h };
-  } catch { return null; }
+    const [x, y, w, h] = best.bbox;
+    return { x, y, width: w, height: h };
+  } catch {
+    return null;
+  }
 }
 
-/* ------------------------------
-   Handle New Images
-   ------------------------------ */
-async function handleNewImages(){
+/* handle new images (scan for people) */
+
+async function handleNewImages() {
   imageDetectionMap = {};
-  imageFiles.forEach(f=> imageDetectionMap[f.name]="unknown");
+  imageFiles.forEach(f => imageDetectionMap[f.name] = "unknown");
 
   refreshImageList();
   imgStatus.textContent = "Scanning images...";
-  smartBanner.style.display="flex";
+  smartBanner.style.display = "flex";
   bannerIcon.textContent = "⏳";
   bannerText.textContent = "Scanning uploaded images...";
 
   let found = 0;
 
-  for(const file of imageFiles){
+  for (const file of imageFiles) {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.src = url;
 
-    await new Promise(r => { img.onload=r; img.onerror=r; });
+    await new Promise(r => { img.onload = r; img.onerror = r; });
 
-    const has = await detectPerson(img);
+    const hasPerson = await detectPerson(img);
     URL.revokeObjectURL(url);
 
-    imageDetectionMap[file.name] = has ? "person" : "none";
-    if(has) found++;
+    if (hasPerson) {
+      imageDetectionMap[file.name] = "person";
+      found++;
+    } else {
+      imageDetectionMap[file.name] = "none";
+    }
+
     refreshImageList();
   }
 
-  if(found){
-    bannerIcon.textContent="🟢";
+  if (found) {
+    bannerIcon.textContent = "🟢";
     bannerText.innerHTML = `<strong>Smart Human Detection:</strong><br>People detected in ${found} of ${imageFiles.length} image(s).`;
     aiSwitch.classList.add("active");
   } else {
-    bannerIcon.textContent="⚪";
-    bannerText.innerHTML=`<strong>Smart Human Detection:</strong><br>No people found.`;
+    bannerIcon.textContent = "⚪";
+    bannerText.innerHTML = `<strong>Smart Human Detection:</strong><br>No people found.`;
     aiSwitch.classList.remove("active");
   }
 
   updateSwitchLabel();
-  imgStatus.textContent="Scan complete";
+  imgStatus.textContent = "Scan complete";
 }
 
-/* ------------------------------
-   Smart Switch
-   ------------------------------ */
-function updateSwitchLabel(){
+/* smart switch label */
+
+function updateSwitchLabel() {
   const on = aiSwitch.classList.contains("active");
-  aiSwitch.querySelector(".label-on").style.display = on ? "inline" : "none";
-  aiSwitch.querySelector(".label-off").style.display = on ? "none" : "inline";
+  const onLabel = aiSwitch.querySelector(".label-on");
+  const offLabel = aiSwitch.querySelector(".label-off");
+  if (onLabel) onLabel.style.display = on ? "inline" : "none";
+  if (offLabel) offLabel.style.display = on ? "none" : "inline";
 }
-aiSwitch.addEventListener("click", ()=>{ aiSwitch.classList.toggle("active"); updateSwitchLabel(); });
 
-/* ------------------------------
-   Crop Math
-   ------------------------------ */
-function computeCrop(imgW,imgH,tw,th, personBox, manual){
-  const scale = Math.max(tw/imgW, th/imgH);
-  const sW = Math.round(tw/scale);
-  const sH = Math.round(th/scale);
-  let cx = imgW/2, cy = imgH/2;
+aiSwitch.addEventListener("click", () => {
+  aiSwitch.classList.toggle("active");
+  updateSwitchLabel();
+});
 
-  if(manual){ cx = manual.xRel*imgW; cy = manual.yRel*imgH; }
-  else if(personBox){ cx = personBox.x + personBox.width/2; cy = personBox.y+personBox.height/2; }
+/* cropping math */
 
-  let sx = Math.round(cx - sW/2);
-  let sy = Math.round(cy - sH/2);
+function computeCrop(imgW, imgH, tw, th, personBox, manual) {
+  const scale = Math.max(tw / imgW, th / imgH);
+  const sW = Math.round(tw / scale);
+  const sH = Math.round(th / scale);
 
-  if(sx<0) sx=0;
-  if(sy<0) sy=0;
-  if(sx+sW>imgW) sx = imgW-sW;
-  if(sy+sH>imgH) sy = imgH-sH;
+  let cx = imgW / 2, cy = imgH / 2;
+  if (manual) {
+    cx = manual.xRel * imgW;
+    cy = manual.yRel * imgH;
+  } else if (personBox) {
+    cx = personBox.x + personBox.width / 2;
+    cy = personBox.y + personBox.height / 2;
+  }
+
+  let sx = Math.round(cx - sW / 2);
+  let sy = Math.round(cy - sH / 2);
+
+  if (sx < 0) sx = 0;
+  if (sy < 0) sy = 0;
+  if (sx + sW > imgW) sx = imgW - sW;
+  if (sy + sH > imgH) sy = imgH - sH;
 
   return { sx, sy, sW, sH };
 }
 
-function cropToBlob(imgEl, tw, th, crop, quality){
-  const c = document.createElement("canvas");
-  c.width = tw; c.height = th;
-  c.getContext("2d").drawImage(imgEl, crop.sx,crop.sy,crop.sW,crop.sH, 0,0,tw,th);
-  return new Promise(res=> c.toBlob(b=>res(b),"image/jpeg",quality/100));
+/* crop -> blob (no AI in resizer) */
+
+function cropToBlob(imgEl, tw, th, crop, quality) {
+  const canvas = document.createElement("canvas");
+  canvas.width = tw;
+  canvas.height = th;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(
+    imgEl,
+    crop.sx, crop.sy, crop.sW, crop.sH,
+    0, 0, tw, th
+  );
+  return new Promise(res =>
+    canvas.toBlob(
+      b => res(b),
+      "image/jpeg",
+      Math.max(0.1, Math.min(1, quality / 100))
+    )
+  );
 }
 
-/* ------------------------------
-   Process ZIP
-   ------------------------------ */
-imgProcessBtn.addEventListener("click", async()=>{
-  if(!imageFiles.length) return alert("Upload images first");
+/* process all -> zip */
 
-  const tw = +imgWidth.value;
-  const th = +imgHeight.value;
-  const q = +imgQuality.value || 90;
-  if(!tw || !th) return alert("Enter width & height");
+imgProcessBtn.addEventListener("click", async () => {
+  if (!imageFiles.length) return alert("Upload images first.");
 
-  imgStatus.textContent="Starting...";
-  imgProgress.style.width="0%";
+  const tw = parseInt(imgWidth.value, 10);
+  const th = parseInt(imgHeight.value, 10);
+  const q = parseInt(imgQuality.value, 10) || 90;
+
+  if (!tw || !th) return alert("Enter width & height.");
+
+  imgStatus.textContent = "Starting...";
+  imgProgress.style.width = "0%";
 
   const zip = new JSZip();
-  let i=0;
+  let index = 0;
 
-  for(const file of imageFiles){
-    i++;
-    imgStatus.textContent=`Processing ${i}/${imageFiles.length}: ${file.name}`;
+  for (const file of imageFiles) {
+    index++;
+    imgStatus.textContent = `Processing ${index}/${imageFiles.length}: ${file.name}`;
+
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.src = url;
 
-    await new Promise(r => { img.onload=r; img.onerror=r; });
+    await new Promise(r => { img.onload = r; img.onerror = r; });
 
     const manual = imageFocusMap[file.name] || null;
-    const person = aiSwitch.classList.contains("active") && !manual
-        ? await detectPersonBox(img)
-        : null;
+    let personBox = null;
+    if (aiSwitch.classList.contains("active") && !manual) {
+      personBox = await detectPersonBox(img);
+    }
 
-    const crop = computeCrop(img.naturalWidth,img.naturalHeight, tw,th, person,manual);
-    const blob = await cropToBlob(img, tw,th, crop, q);
-
-    zip.file("resized_"+file.name.replace(/\.[^.]+$/, "")+".jpg", blob);
+    const crop = computeCrop(img.naturalWidth, img.naturalHeight, tw, th, personBox, manual);
+    const blob = await cropToBlob(img, tw, th, crop, q);
+    zip.file(`resized_${file.name.replace(/\.[^.]+$/, "")}.jpg`, blob);
     URL.revokeObjectURL(url);
-    imgProgress.style.width = (i/imageFiles.length*100)+"%";
+
+    imgProgress.style.width = `${(index / imageFiles.length) * 100}%`;
   }
 
-  imgStatus.textContent="Preparing ZIP...";
-  const blob = await zip.generateAsync({type:"blob"});
-  createDownload(blob,"resized_images.zip");
-  imgStatus.textContent="Done!";
+  imgStatus.textContent = "Preparing ZIP...";
+  const zipBlob = await zip.generateAsync({ type: "blob" });
+  createDownload(zipBlob, "resized_images.zip");
+  imgStatus.textContent = "Done!";
 });
 
 /* ------------------------------
-   Preview Modal
-   ------------------------------ */
-const previewModal = $("previewModal"),
-      beforeImg = $("beforeImg"),
-      afterImg = $("afterImg"),
-      afterLayer = $("afterLayer"),
-      handle = $("handle"),
-      previewTitle = $("previewTitle"),
-      previewInfo = $("previewInfo");
+   PREVIEW MODAL
+------------------------------ */
 
-$("imgPreviewBtn").addEventListener("click", async()=>{
-  if(!imageFiles.length) return alert("Upload images first");
+const previewModal = $("previewModal");
+const beforeImg = $("beforeImg");
+const afterImg = $("afterImg");
+const afterLayer = $("afterLayer");
+const handle = $("handle");
+const previewTitle = $("previewTitle");
+const previewInfo = $("previewInfo");
+const previewArea = $("previewArea");
 
+$("imgPreviewBtn").addEventListener("click", async () => {
+  if (!imageFiles.length) return alert("Upload images first.");
   const file = imageFiles[0];
-  const tw = +imgWidth.value || 800;
-  const th = +imgHeight.value || 600;
-  const q = +imgQuality.value || 90;
+
+  const tw = parseInt(imgWidth.value, 10) || 800;
+  const th = parseInt(imgHeight.value, 10) || 600;
+  const q = parseInt(imgQuality.value, 10) || 90;
+
+  imgStatus.textContent = "Preparing preview...";
 
   revokeIfBlobUrl(beforeImg);
   revokeIfBlobUrl(afterImg);
 
   const img = new Image();
-  const url = URL.createObjectURL(file);
-  img.src = url;
+  const fileUrl = URL.createObjectURL(file);
+  img.src = fileUrl;
 
-  await new Promise(r=>{ img.onload=r; img.onerror=r; });
+  await new Promise(r => { img.onload = r; img.onerror = r; });
 
   const manual = imageFocusMap[file.name] || null;
-  const person = aiSwitch.classList.contains("active") && !manual
-      ? await detectPersonBox(img)
-      : null;
+  let personBox = null;
+  if (aiSwitch.classList.contains("active") && !manual) {
+    personBox = await detectPersonBox(img);
+  }
 
-  const crop = computeCrop(img.naturalWidth,img.naturalHeight, tw,th, person,manual);
-  const blob = await cropToBlob(img,tw,th,crop,q);
+  const crop = computeCrop(img.naturalWidth, img.naturalHeight, tw, th, personBox, manual);
+  const blob = await cropToBlob(img, tw, th, crop, q);
 
-  beforeImg.src = url;
+  beforeImg.src = fileUrl;
   afterImg.src = URL.createObjectURL(blob);
 
   previewTitle.textContent = file.name;
   previewInfo.textContent = `${tw}×${th} • ${q}%`;
 
-  previewModal.style.display="flex";
-  afterLayer.style.width="50%";
-  handle.style.left="50%";
+  previewModal.style.display = "flex";
+  afterLayer.style.width = "50%";
+  handle.style.left = "50%";
 });
 
-$("closePreview").addEventListener("click", ()=>{
-  previewModal.style.display="none";
+$("closePreview").addEventListener("click", () => {
+  previewModal.style.display = "none";
   revokeIfBlobUrl(beforeImg);
   revokeIfBlobUrl(afterImg);
 });
 
-/* Preview drag slider */
-(function(){
-  const wrap = $("previewArea");
-  let drag=false;
+/* preview slider drag */
 
-  handle.addEventListener("mousedown", ()=>{ drag=true; document.body.style.cursor="ew-resize"; });
-  document.addEventListener("mouseup", ()=>{ drag=false; document.body.style.cursor=""; });
-  document.addEventListener("mousemove", e=>{
-    if(!drag) return;
-    const r = wrap.getBoundingClientRect();
-    const pct = ((e.clientX - r.left) / r.width)*100;
-    afterLayer.style.width = Math.max(0,Math.min(100,pct))+"%";
-    handle.style.left = afterLayer.style.width;
+(function () {
+  let dragging = false;
+
+  handle.addEventListener("mousedown", () => {
+    dragging = true;
+    document.body.style.cursor = "ew-resize";
+  });
+
+  document.addEventListener("mouseup", () => {
+    dragging = false;
+    document.body.style.cursor = "";
+  });
+
+  document.addEventListener("mousemove", e => {
+    if (!dragging) return;
+    const rect = previewArea.getBoundingClientRect();
+    const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    const clamped = Math.max(0, Math.min(100, pct));
+    afterLayer.style.width = clamped + "%";
+    handle.style.left = clamped + "%";
   });
 })();
 
 /* ------------------------------
-   Manual Focus Modal
-   ------------------------------ */
-const focusModal = $("focusModal"),
-      focusPreview = $("focusPreview"),
-      focusRect = $("focusRect"),
-      focusCanvas = $("focusCanvas"),
-      focusSelect = $("focusSelect"),
-      saveFocusBtn = $("saveFocus"),
-      clearFocusBtn = $("clearFocus"),
-      closeFocusBtn = $("closeFocus");
+   MANUAL FOCUS MODAL
+------------------------------ */
 
-let dragState = { dragging:false, resizing:false, startX:0,startY:0,startW:0,startH:0,startLeft:0,startTop:0 };
+const focusModal = $("focusModal");
+const focusPreview = $("focusPreview");
+const focusRect = $("focusRect");
+const focusCanvas = $("focusCanvas");
+const focusSelect = $("focusSelect");
+const saveFocusBtn = $("saveFocus");
+const clearFocusBtn = $("clearFocus");
+const closeFocusBtn = $("closeFocus");
+const focusBtn = $("focusBtn");
+
 let rectVisible = false;
+let dragState = { dragging: false, resizing: false, startX: 0, startY: 0, startLeft: 0, startTop: 0, startW: 0, startH: 0 };
 
-$("focusBtn").addEventListener("click", ()=>{
-  if(!imageFiles.length) return alert("Upload images first");
+focusBtn.addEventListener("click", () => {
+  if (!imageFiles.length) return alert("Upload images first.");
   openFocusModal();
 });
 
-function openFocusModal(){
-  focusModal.style.display="flex";
+function openFocusModal() {
+  focusModal.style.display = "flex";
   populateFocusSelect();
-  focusRect.style.display="none";
-  rectVisible=false;
+  focusRect.style.display = "none";
+  rectVisible = false;
 }
 
-function populateFocusSelect(){
-  focusSelect.innerHTML="";
-  imageFiles.forEach((f,i)=>{
-    const opt=document.createElement("option");
-    opt.value=f.name;
-    opt.textContent=(i+1)+". "+f.name;
+function populateFocusSelect() {
+  focusSelect.innerHTML = "";
+  imageFiles.forEach((f, i) => {
+    const opt = document.createElement("option");
+    opt.value = f.name;
+    opt.textContent = `${i + 1}. ${f.name}`;
     focusSelect.appendChild(opt);
   });
-  if(imageFiles.length) loadFocusImage();
+  if (imageFiles.length) loadFocusImage();
 }
 
-function loadFocusImage(){
-  const name=focusSelect.value;
-  const file=imageFiles.find(f=>f.name===name);
-  if(!file) return;
+function loadFocusImage() {
+  const name = focusSelect.value;
+  const file = imageFiles.find(f => f.name === name);
+  if (!file) return;
 
   revokeIfBlobUrl(focusPreview);
   const url = URL.createObjectURL(file);
   focusPreview.src = url;
 
-  focusPreview.onload = ()=>{
-    const imgR = focusPreview.getBoundingClientRect();
-    requestAnimationFrame(()=>{
-      const saved=imageFocusMap[name];
-      const w=Math.max(80,imgR.width*0.25);
-      const h=Math.max(80,imgR.height*0.25);
+  focusPreview.onload = () => {
+    const imgRect = focusPreview.getBoundingClientRect();
+    requestAnimationFrame(() => {
+      const saved = imageFocusMap[name];
+      const w = Math.max(80, imgRect.width * 0.25);
+      const h = Math.max(80, imgRect.height * 0.25);
 
-      const cx = saved ? imgR.left + saved.xRel*imgR.width : imgR.left + imgR.width/2;
-      const cy = saved ? imgR.top + saved.yRel*imgR.height: imgR.top + imgR.height/2;
+      const cx = saved ? imgRect.left + saved.xRel * imgRect.width : imgRect.left + imgRect.width / 2;
+      const cy = saved ? imgRect.top + saved.yRel * imgRect.height : imgRect.top + imgRect.height / 2;
 
-      setRectFromCenter(cx,cy,w,h);
-      focusRect.style.display="block";
-      rectVisible=true;
+      setRectFromCenter(cx, cy, w, h);
+      focusRect.style.display = "block";
+      rectVisible = true;
     });
   };
 }
 
-function setRectFromCenter(cx,cy,w,h){
-  const c = focusCanvas.getBoundingClientRect();
-  let left=cx-w/2, top=cy-h/2;
-
-  if(left<c.left) left=c.left;
-  if(top<c.top) top=c.top;
-  if(left+w>c.right) left=c.right-w;
-  if(top+h>c.bottom) top=c.bottom-h;
-
-  focusRect.style.left = (left-c.left)+"px";
-  focusRect.style.top  = (top-c.top)+"px";
-  focusRect.style.width=w+"px";
-  focusRect.style.height=h+"px";
-}
-
 focusSelect.addEventListener("change", loadFocusImage);
 
-/* Drag + Resize */
-focusRect.addEventListener("mousedown", e=>{
-  if(e.target.classList.contains("focus-handle")) return;
+function setRectFromCenter(cx, cy, w, h) {
+  const c = focusCanvas.getBoundingClientRect();
+  let left = cx - w / 2, top = cy - h / 2;
 
-  dragState.dragging=true;
-  dragState.startX=e.clientX; dragState.startY=e.clientY;
+  if (left < c.left) left = c.left;
+  if (top < c.top) top = c.top;
+  if (left + w > c.right) left = c.right - w;
+  if (top + h > c.bottom) top = c.bottom - h;
 
+  focusRect.style.left = (left - c.left) + "px";
+  focusRect.style.top = (top - c.top) + "px";
+  focusRect.style.width = w + "px";
+  focusRect.style.height = h + "px";
+}
+
+/* drag & resize focus rect */
+
+focusRect.addEventListener("mousedown", e => {
+  if (e.target.classList.contains("focus-handle")) return;
   const r = focusRect.getBoundingClientRect();
   const c = focusCanvas.getBoundingClientRect();
-
-  dragState.startLeft=r.left-c.left;
-  dragState.startTop=r.top-c.top;
-  dragState.startW=r.width;
-  dragState.startH=r.height;
+  dragState.dragging = true;
+  dragState.startX = e.clientX;
+  dragState.startY = e.clientY;
+  dragState.startLeft = r.left - c.left;
+  dragState.startTop = r.top - c.top;
+  dragState.startW = r.width;
+  dragState.startH = r.height;
   e.preventDefault();
 });
 
-focusRect.querySelector(".focus-handle").addEventListener("mousedown", e=>{
-  dragState.resizing=true;
-  dragState.startX=e.clientX;
-  dragState.startY=e.clientY;
-  const r=focusRect.getBoundingClientRect();
-  dragState.startW=r.width;
-  dragState.startH=r.height;
+focusRect.querySelector(".focus-handle").addEventListener("mousedown", e => {
+  dragState.resizing = true;
+  dragState.startX = e.clientX;
+  dragState.startY = e.clientY;
+  const r = focusRect.getBoundingClientRect();
+  dragState.startW = r.width;
+  dragState.startH = r.height;
   e.preventDefault();
 });
 
-document.addEventListener("mousemove", e=>{
-  if(!rectVisible) return;
+document.addEventListener("mousemove", e => {
+  if (!rectVisible) return;
   const c = focusCanvas.getBoundingClientRect();
 
-  if(dragState.dragging){
-    const dx=e.clientX-dragState.startX;
-    const dy=e.clientY-dragState.startY;
-    let L=dragState.startLeft+dx;
-    let T=dragState.startTop+dy;
-
-    L=Math.max(0,Math.min(c.width-dragState.startW, L));
-    T=Math.max(0,Math.min(c.height-dragState.startH, T));
-
-    focusRect.style.left=L+"px";
-    focusRect.style.top=T+"px";
+  if (dragState.dragging) {
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    let L = dragState.startLeft + dx;
+    let T = dragState.startTop + dy;
+    L = Math.max(0, Math.min(c.width - dragState.startW, L));
+    T = Math.max(0, Math.min(c.height - dragState.startH, T));
+    focusRect.style.left = L + "px";
+    focusRect.style.top = T + "px";
   }
 
-  if(dragState.resizing){
-    const dx=e.clientX-dragState.startX;
-    const dy=e.clientY-dragState.startY;
-    let W=Math.max(40,dragState.startW+dx);
-    let H=Math.max(40,dragState.startH+dy);
-
-    W=Math.min(W,c.width);
-    H=Math.min(H,c.height);
-
-    focusRect.style.width=W+"px";
-    focusRect.style.height=H+"px";
+  if (dragState.resizing) {
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    let W = Math.max(40, dragState.startW + dx);
+    let H = Math.max(40, dragState.startH + dy);
+    W = Math.min(W, c.width);
+    H = Math.min(H, c.height);
+    focusRect.style.width = W + "px";
+    focusRect.style.height = H + "px";
   }
 });
 
-document.addEventListener("mouseup", ()=>{
-  dragState.dragging=false;
-  dragState.resizing=false;
+document.addEventListener("mouseup", () => {
+  dragState.dragging = false;
+  dragState.resizing = false;
 });
 
-/* Save/cancel focus */
-saveFocusBtn.addEventListener("click", ()=>{
-  const name=focusSelect.value;
-  if(!name) return alert("Select an image first");
+function saveRectFocus(name) {
+  const rect = focusRect.getBoundingClientRect();
+  const img = focusPreview.getBoundingClientRect();
+  if (!img.width || !img.height) return;
 
-  const r=focusRect.getBoundingClientRect();
-  const img=focusPreview.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
 
-  const cx=r.left+r.width/2;
-  const cy=r.top+r.height/2;
+  const xRel = (cx - img.left) / img.width;
+  const yRel = (cy - img.top) / img.height;
 
   imageFocusMap[name] = {
-    xRel:(cx-img.left)/img.width,
-    yRel:(cy-img.top)/img.height
+    xRel: Math.max(0, Math.min(1, xRel)),
+    yRel: Math.max(0, Math.min(1, yRel))
   };
+}
+
+saveFocusBtn.addEventListener("click", () => {
+  const name = focusSelect.value;
+  if (!name) return alert("Select an image first.");
+  saveRectFocus(name);
   alert("Focus saved.");
 });
 
-clearFocusBtn.addEventListener("click", ()=>{
-  const name=focusSelect.value;
+clearFocusBtn.addEventListener("click", () => {
+  const name = focusSelect.value;
+  if (!name) return;
   delete imageFocusMap[name];
   loadFocusImage();
 });
 
-closeFocusBtn.addEventListener("click", ()=>{
-  focusModal.style.display="none";
+closeFocusBtn.addEventListener("click", () => {
+  focusModal.style.display = "none";
   revokeIfBlobUrl(focusPreview);
 });
 
-/* Double-click focus reposition */
-focusCanvas.addEventListener("dblclick", e=>{
-  const imgR=focusPreview.getBoundingClientRect();
-  let x=e.clientX, y=e.clientY;
+/* double click reposition */
 
-  if(x<imgR.left) x=imgR.left;
-  if(x>imgR.right) x=imgR.right;
-  if(y<imgR.top) y=imgR.top;
-  if(y>imgR.bottom) y=imgR.bottom;
+focusCanvas.addEventListener("dblclick", e => {
+  const imgRect = focusPreview.getBoundingClientRect();
+  if (!imgRect.width) return;
+  let x = e.clientX, y = e.clientY;
+  if (x < imgRect.left) x = imgRect.left;
+  if (x > imgRect.right) x = imgRect.right;
+  if (y < imgRect.top) y = imgRect.top;
+  if (y > imgRect.bottom) y = imgRect.bottom;
 
-  const r=focusRect.getBoundingClientRect();
-  setRectFromCenter(x,y,r.width,r.height);
+  const r = focusRect.getBoundingClientRect();
+  setRectFromCenter(x, y, r.width || 100, r.height || 100);
 });
 
-/* Quality slider UI */
-imgQuality.addEventListener("input", ()=> imgQualityVal.textContent=imgQuality.value+"%");
+/* ------------------------------
+   AI IMAGE ENHANCER SECTION
+------------------------------ */
 
-/* Init */
+const dropEnhance = $("dropEnhance");
+const enhanceInput = $("enhanceInput");
+const enhFileInfo = $("enhFileInfo");
+
+const enhUpscale2x = $("enhUpscale2x");
+const enhUpscale4x = $("enhUpscale4x");
+const enhFaceEnhance = $("enhFaceEnhance");
+const enhDenoise = $("enhDenoise");
+
+const enhQuality = $("enhQuality");
+const enhQualityVal = $("enhQualityVal");
+const enhPreviewBtn = $("enhPreviewBtn");
+const enhRunBtn = $("enhRunBtn");
+const enhStatus = $("enhStatus");
+const enhProgress = $("enhProgress");
+
+let enhanceFile = null;
+
+/* drag & drop for enhancer */
+
+dropEnhance.addEventListener("click", () => enhanceInput.click());
+
+enhanceInput.addEventListener("change", e => {
+  handleEnhanceFile(e.target.files);
+});
+
+dropEnhance.addEventListener("dragover", e => {
+  e.preventDefault();
+  dropEnhance.style.background = "rgba(255,255,255,0.04)";
+});
+dropEnhance.addEventListener("dragleave", () => {
+  dropEnhance.style.background = "transparent";
+});
+dropEnhance.addEventListener("drop", e => {
+  e.preventDefault();
+  dropEnhance.style.background = "transparent";
+  handleEnhanceFile(e.dataTransfer.files);
+});
+
+function handleEnhanceFile(files) {
+  if (!files.length) return;
+  enhanceFile = files[0];
+  enhFileInfo.textContent = `Selected: ${enhanceFile.name} • ${(enhanceFile.size / 1024).toFixed(1)} KB`;
+  enhStatus.textContent = "Ready to enhance.";
+}
+
+/* AI settings */
+
+function getEnhSettings() {
+  const s = {
+    upscale2x: !!enhUpscale2x.checked,
+    upscale4x: !!enhUpscale4x.checked,
+    faceEnhance: !!enhFaceEnhance.checked,
+    denoise: !!enhDenoise.checked
+  };
+  // prefer 4x if both
+  if (s.upscale2x && s.upscale4x) s.upscale2x = false;
+  const any = s.upscale2x || s.upscale4x || s.faceEnhance || s.denoise;
+  return any ? s : null;
+}
+
+/* AI enhancement pipeline helpers */
+
+function applyEnhancementsToCanvas(canvas, ctx, aiSettings) {
+  const w = canvas.width;
+  const h = canvas.height;
+  let imageData = ctx.getImageData(0, 0, w, h);
+  let data = imageData.data;
+
+  const clamp = v => v < 0 ? 0 : (v > 255 ? 255 : v);
+
+  // base small contrast/brightness tweak
+  const contrast = 1.05;
+  const brightness = 3;
+  for (let i = 0; i < data.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      const idx = i + c;
+      let v = data[idx];
+      v = (v - 128) * contrast + 128 + brightness;
+      data[idx] = clamp(v);
+    }
+  }
+
+  // optional denoise (light blur)
+  if (aiSettings.denoise) {
+    imageData = gaussianBlur(imageData, w, h);
+    data = imageData.data;
+  }
+
+  // sharpen (for faceEnhance and denoise)
+  if (aiSettings.denoise || aiSettings.faceEnhance) {
+    imageData = sharpen(imageData, w, h);
+  }
+
+  // upscale if requested (simple resize placeholder)
+  if (aiSettings.upscale2x || aiSettings.upscale4x) {
+    const scale = aiSettings.upscale4x ? 4 : 2;
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = w;
+    tempCanvas.height = h;
+    const tctx = tempCanvas.getContext("2d");
+    tctx.putImageData(imageData, 0, 0);
+
+    const newW = w * scale;
+    const newH = h * scale;
+    canvas.width = newW;
+    canvas.height = newH;
+    ctx = canvas.getContext("2d");
+    ctx.drawImage(tempCanvas, 0, 0, newW, newH);
+  } else {
+    ctx.putImageData(imageData, 0, 0);
+  }
+}
+
+/* simple blur */
+
+function gaussianBlur(imageData, w, h) {
+  const src = imageData.data;
+  const out = new Uint8ClampedArray(src.length);
+
+  const kernel = [1, 2, 1,
+                  2, 4, 2,
+                  1, 2, 1];
+  const idx = (x, y) => (y * w + x) * 4;
+
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      let r = 0, g = 0, b = 0, a = 0, kSum = 0;
+      for (let ky = -1; ky <= 1; ky++) {
+        for (let kx = -1; kx <= 1; kx++) {
+          const ix = x + kx;
+          const iy = y + ky;
+          const wgt = kernel[(ky + 1) * 3 + (kx + 1)];
+          const base = idx(ix, iy);
+          r += src[base] * wgt;
+          g += src[base + 1] * wgt;
+          b += src[base + 2] * wgt;
+          a += src[base + 3] * wgt;
+          kSum += wgt;
+        }
+      }
+      const o = idx(x, y);
+      out[o] = r / kSum;
+      out[o + 1] = g / kSum;
+      out[o + 2] = b / kSum;
+      out[o + 3] = a / kSum;
+    }
+  }
+
+  imageData.data.set(out);
+  return imageData;
+}
+
+/* simple sharpen */
+
+function sharpen(imageData, w, h) {
+  const src = imageData.data;
+  const out = new Uint8ClampedArray(src.length);
+
+  const kernel = [ 0, -1,  0,
+                  -1,  5, -1,
+                   0, -1,  0 ];
+  const idx = (x, y) => (y * w + x) * 4;
+
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      let r = 0, g = 0, b = 0, a = 0;
+      for (let ky = -1; ky <= 1; ky++) {
+        for (let kx = -1; kx <= 1; kx++) {
+          const ix = x + kx;
+          const iy = y + ky;
+          const wgt = kernel[(ky + 1) * 3 + (kx + 1)];
+          const base = idx(ix, iy);
+          r += src[base] * wgt;
+          g += src[base + 1] * wgt;
+          b += src[base + 2] * wgt;
+          a += src[base + 3] * wgt;
+        }
+      }
+      const o = idx(x, y);
+      out[o] = Math.max(0, Math.min(255, r));
+      out[o + 1] = Math.max(0, Math.min(255, g));
+      out[o + 2] = Math.max(0, Math.min(255, b));
+      out[o + 3] = Math.max(0, Math.min(255, a));
+    }
+  }
+
+  imageData.data.set(out);
+  return imageData;
+}
+
+/* enhancer quality slider */
+
+enhQuality.addEventListener("input", () => {
+  enhQualityVal.textContent = enhQuality.value + "%";
+});
+
+/* Enhance & Download */
+
+async function runEnhancer(previewOnly = false) {
+  if (!enhanceFile) {
+    alert("Upload an image first.");
+    return;
+  }
+
+  const aiSettings = getEnhSettings();
+  if (!aiSettings) {
+    if (!confirm("No AI options selected. Apply default light sharpening & contrast?")) {
+      return;
+    }
+  }
+
+  const q = parseInt(enhQuality.value, 10) || 92;
+
+  enhStatus.textContent = "Preparing image...";
+  enhProgress.style.width = "10%";
+
+  const img = new Image();
+  const url = URL.createObjectURL(enhanceFile);
+  img.src = url;
+
+  await new Promise(r => { img.onload = r; img.onerror = r; });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+
+  enhStatus.textContent = "Applying smart enhancements...";
+  enhProgress.style.width = "60%";
+
+  if (aiSettings) {
+    applyEnhancementsToCanvas(canvas, ctx, aiSettings);
+  }
+
+  enhStatus.textContent = "Encoding output...";
+  enhProgress.style.width = "90%";
+
+  const blob = await new Promise(res =>
+    canvas.toBlob(
+      b => res(b),
+      "image/jpeg",
+      Math.max(0.1, Math.min(1, q / 100))
+    )
+  );
+
+  URL.revokeObjectURL(url);
+
+  if (previewOnly) {
+    // reuse preview modal
+    revokeIfBlobUrl(beforeImg);
+    revokeIfBlobUrl(afterImg);
+
+    beforeImg.src = URL.createObjectURL(enhanceFile);
+    afterImg.src = URL.createObjectURL(blob);
+
+    previewTitle.textContent = enhanceFile.name + " (Enhanced Preview)";
+    previewInfo.textContent = `${canvas.width}×${canvas.height} • ${q}%`;
+    previewModal.style.display = "flex";
+    afterLayer.style.width = "50%";
+    handle.style.left = "50%";
+
+    enhStatus.textContent = "Preview ready.";
+    enhProgress.style.width = "100%";
+  } else {
+    const outName = enhanceFile.name.replace(/\.[^.]+$/, "") + "_enhanced.jpg";
+    createDownload(blob, outName);
+    enhStatus.textContent = "Enhanced image downloaded.";
+    enhProgress.style.width = "100%";
+  }
+}
+
+/* enhancer buttons */
+
+enhPreviewBtn.addEventListener("click", () => runEnhancer(true));
+enhRunBtn.addEventListener("click", () => runEnhancer(false));
+
+/* ------------------------------
+   MISC
+------------------------------ */
+
+imgQuality.addEventListener("input", () => {
+  imgQualityVal.textContent = imgQuality.value + "%";
+});
+
+/* INIT */
+
 updateSwitchLabel();
-showSection("home");
+if (!isAuthed()) {
+  // keep modal visible
+} else {
+  showSection("home");
+}
