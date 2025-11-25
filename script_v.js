@@ -1,727 +1,349 @@
-/* ==========================================================
-   script_v.js
-   Meta Media Hub — Unified client-side script
-   - Auth + theme + navigation
-   - Image upload + optional coco-ssd person detection
-   - Enhancer: OCR boost, HDR
-   - Annotation canvas with tools (rect, arrow, text, highlight, blur, free)
-   - Preview updates inline (no new window), no ZIP
-   - All client-side
-   =========================================================*/
+# Updated HTML + CSS — matched to script_v.js
 
-/* -------------------------
-   Small helpers
---------------------------*/
-const $ = id => document.getElementById(id);
-const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
+Below are the fully updated **HTML** and **CSS** files synced to the `script_v.js` you provided. The HTML references the local JS file path so your environment/tooling can transform it to a usable URL.
 
-/* -------------------------
-   AUTH + SECTIONS
---------------------------*/
-const PASSWORD = "Meta@123";
-const AUTH_KEY = "mm_auth_v4";
-const THEME_KEY = "mm_theme_choice";
+> **Local JS path used:** `/mnt/data/script_v.js`
 
-const pwModal = $("pwModal"), pwInput = $("pwInput"), pwBtn = $("pwBtn"), pwMsg = $("pwMsg");
-const statusText = $("statusText");
+---
 
-function isAuthed(){ return localStorage.getItem(AUTH_KEY) === "true"; }
-function saveAuth(v){ if(v) localStorage.setItem(AUTH_KEY,"true"); else localStorage.removeItem(AUTH_KEY); }
+## index.html
 
-function showSection(name){
-  const home = $("home"), imageSection = $("imageSection"), enhancerSection = $("enhancerSection");
-  if(home) home.style.display = (name==="home") ? "flex" : "none";
-  if(imageSection) imageSection.style.display = (name==="resize") ? "block" : "none";
-  if(enhancerSection) enhancerSection.style.display = (name==="enhance") ? "block" : "none";
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meta Media Hub — Image Suite</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
 
-  // small animation class toggle
-  document.querySelectorAll(".section, .home-section").forEach(el=>el.classList.remove("active"));
-  const active = (name==="home") ? home : (name==="resize") ? imageSection : enhancerSection;
-  if(active) setTimeout(()=> active.classList.add("active"), 12);
-}
+<body>
+  <div class="app-wrap">
 
-async function unlock(){
-  if(!pwInput) return;
-  if(pwInput.value === PASSWORD){
-    saveAuth(true);
-    if(pwModal) pwModal.style.display = "none";
-    if(statusText) statusText.textContent = "Unlocked";
-    if(pwMsg) pwMsg.textContent = "";
-    showSection("home");
-  } else {
-    if(pwMsg) pwMsg.textContent = "Incorrect password";
-  }
-}
-on(pwBtn, "click", unlock);
-on(pwInput, "keydown", e => { if(e.key === "Enter") unlock(); });
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">MM</div>
+        <div>
+          <h1>Meta Media Hub</h1>
+          <span class="tagline">Internal image toolkit for META e-learning</span>
+        </div>
+      </div>
 
-if(isAuthed()){
-  if(pwModal) pwModal.style.display = "none";
-  if(statusText) statusText.textContent = "Unlocked";
-  showSection("home");
-} else {
-  // modal is shown by HTML initially
-}
+      <div class="right">
+        <button id="themeBtn" class="about-btn" title="Choose Theme">🎨</button>
+        <button id="aboutBtn" class="about-btn" title="About this tool">i</button>
+        <button id="themeToggle" class="theme-toggle" title="Toggle light/dark">🌙</button>
+        <span id="statusText" class="status">Locked</span>
+      </div>
+    </header>
 
-/* -------------------------
-   NAV + ABOUT + THEME
---------------------------*/
-on($("btnImage"), "click", ()=> showSection("resize"));
-on($("btnEnhancer"), "click", ()=> showSection("enhance"));
-on($("backHomeFromImage"), "click", ()=> showSection("home"));
-on($("backHomeFromEnhancer"), "click", ()=> showSection("home"));
+    <!-- PASSWORD MODAL -->
+    <div id="pwModal" class="modal" style="display:flex">
+      <div class="modal-panel pw-panel">
+        <h2>Enter Password</h2>
+        <p class="small">Unlock the Meta Media Hub</p>
+        <input id="pwInput" class="input" type="password" placeholder="Password" />
+        <button id="pwBtn" class="btn primary full">Unlock</button>
+        <p id="pwMsg" class="error"></p>
+      </div>
+    </div>
 
-on($("aboutBtn"), "click", ()=> { const m = $("aboutModal"); if(m) m.style.display = "flex"; });
-on($("closeAbout"), "click", ()=> { const m = $("aboutModal"); if(m) m.style.display = "none"; });
+    <!-- HOME -->
+    <section id="home" class="home-section" style="display:none">
+      <div class="tool-card" id="btnImage">
+        <div class="icon">🖼️</div>
+        <h3>Image Tools</h3>
+        <p>Resize • Smart Center • Human Detection</p>
+      </div>
 
-const themeToggle = $("themeToggle");
-const themeBtn = $("themeBtn");
-const themeModal = $("themeModal");
-const closeTheme = $("closeTheme");
+      <div class="tool-card" id="btnEnhancer">
+        <div class="icon">✨</div>
+        <h3>AI Image Enhancer</h3>
+        <p>Upscale • Sharpen • Denoise • HDR • Text clarity</p>
+      </div>
+    </section>
 
-function applyThemeValue(key){
-  // remove previously applied theme-* classes but keep other classes
-  const classes = Array.from(document.documentElement.classList).filter(c=>!c.startsWith("theme-"));
-  document.documentElement.className = classes.join(" ");
-  if(key) document.documentElement.classList.add("theme-" + key);
-  localStorage.setItem(THEME_KEY, key || "");
-  // update icon
-  if(themeToggle) themeToggle.textContent = (key && key === "retro-beige") ? "☀️" : (document.documentElement.classList.contains("theme-light") ? "☀️" : "🌙");
-}
+    <!-- IMAGE RESIZER SECTION -->
+    <section id="imageSection" class="section" style="display:none">
+      <div class="section-header">
+        <div>
+          <h2>Image Tools</h2>
+          <p class="subtitle">Batch resize with smart human detection & manual focus.</p>
+        </div>
+        <button id="backHomeFromImage" class="back-btn">← Home</button>
+      </div>
 
-on(themeToggle, "click", ()=>{
-  if(document.documentElement.classList.contains("theme-light")){
-    document.documentElement.classList.remove("theme-light");
-    localStorage.setItem(THEME_KEY,"");
-  } else {
-    document.documentElement.classList.add("theme-light");
-    localStorage.setItem(THEME_KEY,"theme-light");
-  }
-});
+      <div id="smartBanner" class="smart-banner off" style="display:none">
+        <div id="bannerIcon" class="s-icon">⚪</div>
+        <div id="bannerText" class="s-text">Smart Human Detection status will appear here after scanning.</div>
+      </div>
 
-on(themeBtn, "click", ()=> { if(themeModal) themeModal.style.display = "flex"; });
-on(closeTheme, "click", ()=> { if(themeModal) themeModal.style.display = "none"; });
+      <div class="panel">
+        <div id="dropImage" class="dropzone">Click or drag & drop images here (multiple)</div>
+        <input id="imageInput" type="file" accept="image/*" multiple>
+        <div id="imageFileList" class="file-list">No files uploaded.</div>
 
-document.querySelectorAll(".theme-card").forEach(card=>{
-  card.addEventListener("click", ()=>{
-    const t = card.dataset.theme;
-    if(t) applyThemeValue(t);
-    if(themeModal) themeModal.style.display = "none";
-  });
-});
-applyThemeValue(localStorage.getItem(THEME_KEY) || "");
+        <div class="two-input">
+          <input id="imgWidth" class="input" type="number" placeholder="Width (px)">
+          <input id="imgHeight" class="input" type="number" placeholder="Height (px)">
+        </div>
 
-/* -------------------------
-   Tooltips
---------------------------*/
-const tooltipBox = document.createElement("div");
-tooltipBox.className = "tooltip-box";
-tooltipBox.style.display = "none";
-document.body.appendChild(tooltipBox);
-let tooltipTimer = null;
-document.querySelectorAll(".help-tip").forEach(el=>{
-  el.addEventListener("mouseenter", ()=>{
-    const tip = el.dataset.tip || el.getAttribute("data-tip") || "Info";
-    tooltipTimer = setTimeout(()=>{
-      tooltipBox.textContent = tip;
-      tooltipBox.style.display = "block";
-      const r = el.getBoundingClientRect();
-      const topTry = r.top - tooltipBox.offsetHeight - 8;
-      tooltipBox.style.top = (topTry > 8 ? topTry : (r.bottom + 8)) + "px";
-      tooltipBox.style.left = Math.max(8, Math.min(window.innerWidth - tooltipBox.offsetWidth - 8, r.left)) + "px";
-    }, 160);
-  });
-  el.addEventListener("mouseleave", ()=> {
-    clearTimeout(tooltipTimer);
-    tooltipBox.style.display = "none";
-  });
-});
+        <div class="controls">
+          <div class="mini-control">
+            <label>Quality</label>
+            <div class="help-tip" data-tip="Higher quality = better clarity but heavier file size. 90% works well for most LMS assets.">?</div>
+          </div>
+          <input id="imgQuality" type="range" min="60" max="100" value="90">
+          <span id="imgQualityVal">90%</span>
 
-/* ==========================================================
-   IMAGE RESIZER — (scan only, no zip) - uses coco-ssd if available
-==========================================================*/
-let imageFiles = [], imageDetectionMap = {}, cocoModel = null;
-const dropImage = $("dropImage"), imageInput = $("imageInput"), imageFileList = $("imageFileList");
-const smartBanner = $("smartBanner"), bannerIcon = $("bannerIcon"), bannerText = $("bannerText");
-const imgStatus = $("imgStatus"), imgAiToggle = $("imgAiToggle");
+          <div class="flex-spacer"></div>
 
-if(dropImage) dropImage.addEventListener("click", ()=> imageInput && imageInput.click());
-if(imageInput){
-  imageInput.addEventListener("change", async e=>{
-    imageFiles = Array.from(e.target.files || []);
-    await handleNewImages();
-  });
-}
-if(dropImage){
-  dropImage.addEventListener("dragover", e=> { e.preventDefault(); dropImage.style.background = "rgba(255,255,255,0.02)"; });
-  dropImage.addEventListener("dragleave", ()=> { dropImage.style.background = ""; });
-  dropImage.addEventListener("drop", async e=>{
-    e.preventDefault();
-    dropImage.style.background = "";
-    imageFiles = Array.from(e.dataTransfer.files || []);
-    await handleNewImages();
-  });
-}
+          <div id="imgAiToggle" class="ai-switch" title="Smart Human Detection">
+            <div class="track"><div class="ball"></div></div>
+            <span class="label-off">Smart Detection: OFF</span>
+            <span class="label-on">Smart Detection: ON</span>
+          </div>
+        </div>
 
-function refreshImageList(){
-  if(!imageFileList) return;
-  if(!imageFiles.length){
-    imageFileList.innerHTML = "No files uploaded.";
-    if(smartBanner) smartBanner.style.display = "none";
-    return;
-  }
-  imageFileList.innerHTML = imageFiles.map((f,i)=>{
-    const st = imageDetectionMap[f.name] || "unknown";
-    let icon="⏳", text="Scanning…";
-    if(st === "person"){ icon = "👤"; text = "Human found"; }
-    if(st === "none"){ icon = "❌"; text = "No person"; }
-    return `<div class="file-row"><span style="margin-right:10px">${icon}</span><div><b>${i+1}. ${f.name}</b><br><small>${text} — ${Math.round(f.size/1024)} KB</small></div></div>`;
-  }).join("");
-}
+        <div class="btn-row">
+          <button id="imgPreviewBtn" class="btn ghost">Preview First</button>
+          <button id="focusBtn" class="btn ghost">Manual Focus</button>
+          <button id="imgProcessBtn" class="btn primary">Process</button>
+        </div>
 
-async function loadCoco(){
-  if(cocoModel) return cocoModel;
-  try{
-    if(imgStatus) imgStatus.textContent = "Loading detection model…";
-    cocoModel = await cocoSsd.load();
-    if(imgStatus) imgStatus.textContent = "Model ready";
-    return cocoModel;
-  }catch(e){
-    console.warn("coco load fail", e);
-    if(imgStatus) imgStatus.textContent = "Model load failed";
-    return null;
-  }
-}
-async function detectPerson(imgEl){
-  try{
-    await loadCoco();
-    if(!cocoModel) return false;
-    const preds = await cocoModel.detect(imgEl);
-    return preds.some(p => p.class === "person");
-  }catch(e){
-    console.warn("detectPerson error", e);
-    return false;
-  }
-}
+        <div class="progress"><div id="imgProgress" class="bar"></div></div>
+        <p id="imgStatus" class="status-text">Ready.</p>
+      </div>
 
-async function handleNewImages(){
-  imageDetectionMap = {};
-  imageFiles.forEach(f => imageDetectionMap[f.name] = "unknown");
-  refreshImageList();
-  if(smartBanner) smartBanner.style.display = "flex";
-  if(bannerText) bannerText.textContent = "Scanning images…";
-  if(imgStatus) imgStatus.textContent = "Scanning images…";
+      <footer class="footer">Created by Mukesh Yadav • META E-learning Team</footer>
+    </section>
 
-  let found = 0;
-  for(const file of imageFiles){
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.src = url;
-    await img.decode().catch(()=>{});
-    const has = await detectPerson(img);
-    imageDetectionMap[file.name] = has ? "person" : "none";
-    if(has) found++;
-    refreshImageList();
-    URL.revokeObjectURL(url);
-  }
-  if(bannerIcon) bannerIcon.textContent = found ? "🟢" : "⚪";
-  if(bannerText) bannerText.innerHTML = found ? `Smart Human Detection: found people in <b>${found}</b> of ${imageFiles.length} image(s).` : `Smart Human Detection: no people found.`;
-  if(imgStatus) imgStatus.textContent = "Scan complete.";
-  if(imgAiToggle) imgAiToggle.classList.toggle("active", found>0);
-}
+    <!-- AI IMAGE ENHANCER SECTION -->
+    <section id="enhancerSection" class="section" style="display:none">
+      <div class="section-header">
+        <div>
+          <h2>AI Image Enhancer</h2>
+          <p class="subtitle">Improve quality: upscale, sharpen, denoise, HDR & text clarity — right in the browser.</p>
+        </div>
+        <button id="backHomeFromEnhancer" class="back-btn">← Home</button>
+      </div>
 
-/* ==========================================================
-   ENHANCER + ANNOTATION
-   - use one inline preview area (beforeImg & afterImg)
-   - annotation overlays on annoCanvas
-   - annApply merges into enhanceCanvas
-==========================================================*/
+      <div class="panel enhancer-layout">
+        <div class="enh-left">
+          <h3 class="panel-title">Upload Image</h3>
+          <div id="dropEnhance" class="dropzone">Click or drag & drop a single image</div>
+          <input id="enhanceInput" type="file" accept="image/*">
+          <div id="enhFileInfo" class="file-list small-file">No image selected.</div>
+          <p class="small-muted">Ideal for portraits, key visuals, LMS screenshots, thumbnails and hero images.</p>
+        </div>
 
-/* DOM refs */
-const dropEnhance = $("dropEnhance"), enhanceInput = $("enhanceInput"), enhFileInfo = $("enhFileInfo");
-const enhQuality = $("enhQuality"), enhQualityVal = $("enhQualityVal");
-const enhRunBtn = $("enhRunBtn"), enhPreviewBtn = $("enhPreviewBtn");
-const enhOCR = $("enhOCR"), enhHDR = $("enhHDR"), enhHide = $("enhHide");
-const hideAreaBtn = $("hideAreaBtn");
-const enhStatus = $("enhStatus");
+        <div class="enh-right">
+          <h3 class="panel-title">Enhancement Options</h3>
+          <div class="ai-panel">
+            <div class="ai-panel-header">
+              <span class="label">Smart Enhancements (processed locally)</span>
+              <div class="help-tip" data-tip="These processors work directly in your browser using Canvas. No upload, no server, safe for internal projects.">?</div>
+            </div>
 
-const beforeImg = $("beforeImg"), afterImg = $("afterImg"), previewArea = $("previewArea"), afterLayer = $("afterLayer");
-const annoCanvas = $("annoCanvas"), annoToolbar = $("annoToolbar");
-const annoButtons = document.querySelectorAll(".anno-btn");
-const annUndo = $("annUndo"), annClear = $("annClear"), annApply = $("annApply");
-const annColor = $("annColor"), annSize = $("annSize");
+            <div class="ai-options">
+              <label class="ai-option"><input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhHDR"><span>HDR Boost (Shadows & Highlights)</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhHide"><span>Object Hide / Privacy Blur</span></label>
+            </div>
 
-/* internal canvas (natural image resolution) */
-const enhanceCanvas = document.createElement("canvas");
-const enhanceCtx = enhanceCanvas.getContext("2d");
-let currentEnhFile = null;
+            <div class="btn-row small-row">
+              <button id="hideAreaBtn" class="btn ghost">Set Hide Area</button>
+            </div>
 
-/* annotation state */
-let annoCtx = null;
-let annoWidth = 0, annoHeight = 0;
-let annoActiveTool = null;
-let drawing = false;
-let startX = 0, startY = 0;
-let actionsStack = [];
-let redoStack = [];
+            <p class="ai-note">These filters gently improve clarity, contrast and reduce noise using on-device processing. No server, no upload.</p>
+          </div>
 
-/* load image into internal canvas and update before/after preview */
-async function loadEnhImage(file){
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.src = url;
-  await img.decode().catch(()=>{});
-  enhanceCanvas.width = img.naturalWidth;
-  enhanceCanvas.height = img.naturalHeight;
-  enhanceCtx.clearRect(0,0,enhanceCanvas.width, enhanceCanvas.height);
-  enhanceCtx.drawImage(img, 0, 0);
-  if(enhFileInfo) enhFileInfo.textContent = `${file.name} — ${img.naturalWidth}×${img.naturalHeight}px`;
-  if(enhStatus) enhStatus.textContent = "Image loaded.";
-  // set preview images (before and after show same for now)
-  beforeImg.src = url;
-  afterImg.src = url;
-  // reset annotation & stacks
-  actionsStack = []; redoStack = [];
-  ensureAnnoCanvas();
-  URL.revokeObjectURL(url);
-}
+          <div class="two-input">
+            <div class="mini-control">
+              <label class="small-label">Output Quality</label>
+              <div class="help-tip" data-tip="Controls JPEG export quality. 92% is a sweet spot between clarity and file size.">?</div>
+              <input id="enhQuality" type="range" min="70" max="100" value="92">
+              <span id="enhQualityVal" class="mini-val">92%</span>
+            </div>
+          </div>
 
-if(dropEnhance) dropEnhance.addEventListener("click", ()=> enhanceInput && enhanceInput.click());
-if(enhanceInput){
-  enhanceInput.addEventListener("change", async e=>{
-    const arr = Array.from(e.target.files || []);
-    if(!arr.length) return;
-    currentEnhFile = arr[0];
-    await loadEnhImage(currentEnhFile);
-  });
-}
-if(dropEnhance){
-  dropEnhance.addEventListener("dragover", e=> { e.preventDefault(); dropEnhance.style.background="rgba(255,255,255,0.02)"; });
-  dropEnhance.addEventListener("dragleave", ()=> { dropEnhance.style.background=""; });
-  dropEnhance.addEventListener("drop", async e=> {
-    e.preventDefault();
-    dropEnhance.style.background="";
-    const arr = Array.from(e.dataTransfer.files || []);
-    if(!arr.length) return;
-    currentEnhFile = arr[0];
-    await loadEnhImage(currentEnhFile);
-  });
-}
+          <div class="btn-row">
+            <button id="enhPreviewBtn" class="btn ghost">Preview</button>
+            <button id="enhRunBtn" class="btn primary">Enhance & Download</button>
+          </div>
 
-/* quality UI */
-if(enhQuality && enhQualityVal){
-  enhQuality.addEventListener("input", ()=> {
-    enhQualityVal.textContent = (parseInt(enhQuality.value)||92) + "%";
-  });
-  // init text
-  enhQualityVal.textContent = (parseInt(enhQuality.value)||92) + "%";
-}
+          <div class="progress"><div id="enhProgress" class="bar"></div></div>
+          <p id="enhStatus" class="status-text">Waiting for image.</p>
+        </div>
+      </div>
 
-/* Preview button (inline) */
-on(enhPreviewBtn, "click", ()=>{
-  if(!enhanceCanvas.width) return alert("Upload an image first!");
-  // show processed image as afterImg (no download)
-  // if filters were applied previously they are in enhanceCanvas; show current state
-  const q = enhQuality ? (parseInt(enhQuality.value)||92)/100 : 0.92;
-  const out = enhanceCanvas.toDataURL("image/jpeg", q);
-  afterImg.src = out;
-  if(enhStatus) enhStatus.textContent = "Preview updated.";
-});
+      <!-- ANNOTATION / PREVIEW AREA -->
+      <div class="panel" style="margin-top:14px">
+        <div class="panel-title">Annotate / Preview</div>
 
-/* Apply enhancement pipeline (OCR/HDR) + merge annotations then download */
-on(enhRunBtn, "click", ()=>{
-  if(!enhanceCanvas.width) return alert("Upload an image first!");
-  enhStatus && (enhStatus.textContent = "Processing...");
-  try{
-    // 1) get pixels and apply filters
-    let imgData = enhanceCtx.getImageData(0,0,enhanceCanvas.width, enhanceCanvas.height);
-    if(enhOCR && enhOCR.checked) imgData = applyOCRBoost(imgData);
-    if(enhHDR && enhHDR.checked) imgData = applyHDRToneMap(imgData);
-    enhanceCtx.putImageData(imgData, 0, 0);
+        <div id="previewArea" class="preview-area" aria-hidden="true">
+          <img id="beforeImg" alt="Before" />
+          <div id="afterLayer" class="after-layer"><img id="afterImg" alt="After" /></div>
+          <canvas id="annoCanvas" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto;"></canvas>
+          <div id="annoHandle" class="handle" style="display:none"></div>
+        </div>
 
-    // 2) merge annotation actions (including blur actions) onto the image
-    mergeAnnotationsToEnhanceCanvas();
+        <div id="annoToolbar" class="annotation-toolbar" style="display:none">
+          <div class="controls-row">
+            <button class="anno-btn" data-tool="rect">Rectangle</button>
+            <button class="anno-btn" data-tool="arrow">Arrow</button>
+            <button class="anno-btn" data-tool="text">Text</button>
+            <button class="anno-btn" data-tool="highlight">Highlight</button>
+            <button class="anno-btn" data-tool="blur">Blur area</button>
+            <button class="anno-btn" id="annUndo">Undo</button>
+            <button class="anno-btn" id="annClear">Clear</button>
+            <label class="anno-control">Color <input id="annColor" type="color" value="#ff7a3c"></label>
+            <label class="anno-control">Size <input id="annSize" type="range" min="1" max="30" value="4"></label>
+            <button id="annApply" class="btn primary">Apply</button>
+          </div>
+          <div class="small muted" style="margin-top:8px">Draw on the image, then click Apply to merge annotations to the current enhanced image (client-only).</div>
+        </div>
+      </div>
 
-    // 3) export
-    const q = enhQuality ? (parseInt(enhQuality.value)||92)/100 : 0.92;
-    const out = enhanceCanvas.toDataURL("image/jpeg", q);
-    downloadDataURL(out, (currentEnhFile && currentEnhFile.name) ? (currentEnhFile.name.replace(/\.[^/.]+$/,"") + "_enh.jpg") : "enhanced.jpg");
-    enhStatus && (enhStatus.textContent = "Enhancement complete. File downloaded.");
-    // update inline preview
-    afterImg.src = out;
-  }catch(e){
-    console.error("Enhance run error", e);
-    enhStatus && (enhStatus.textContent = "Processing failed.");
-  }
-});
+    </section>
 
-/* -------------------------
-   FILTERS (OCR, HDR)
---------------------------*/
-function applyOCRBoost(imageData){
-  const d = imageData.data;
-  for(let i=0;i<d.length;i+=4){
-    const r = d[i], g = d[i+1], b = d[i+2];
-    const lum = (r+g+b)/3;
-    const boost = lum > 128 ? 1.05 : 1.18;
-    d[i] = Math.min(255, r * boost);
-    d[i+1] = Math.min(255, g * boost);
-    d[i+2] = Math.min(255, b * boost);
-    // slight contrast
-    d[i] = Math.min(255, (d[i] - 128) * 1.06 + 128);
-    d[i+1] = Math.min(255, (d[i+1] - 128) * 1.06 + 128);
-    d[i+2] = Math.min(255, (d[i+2] - 128) * 1.06 + 128);
-  }
-  return imageData;
-}
+    <footer class="footer" style="margin-top:18px">Created by Mukesh Yadav • META E-learning Team</footer>
 
-function applyHDRToneMap(imageData){
-  const d = imageData.data;
-  for(let i=0;i<d.length;i+=4){
-    d[i] = toneChannel(d[i]);
-    d[i+1] = toneChannel(d[i+1]);
-    d[i+2] = toneChannel(d[i+2]);
-  }
-  return imageData;
-}
-function toneChannel(v){
-  if(v < 80) return Math.min(255, v * 1.28);
-  if(v > 200) return Math.max(0, v * 0.88);
-  return v;
-}
+  </div>
 
-/* ============================
-   Annotation system
-   - draw shapes on annoCanvas (display coords)
-   - actionsStack stores shapes to apply/merge later
-=============================*/
-function ensureAnnoCanvas(){
-  if(!annoCanvas || !previewArea) return false;
-  const rect = previewArea.getBoundingClientRect();
-  const ratio = window.devicePixelRatio || 1;
-  const w = Math.max(10, Math.floor(rect.width));
-  const h = Math.max(10, Math.floor(rect.height));
-  annoCanvas.style.width = w + "px";
-  annoCanvas.style.height = h + "px";
-  annoCanvas.width = Math.floor(w * ratio);
-  annoCanvas.height = Math.floor(h * ratio);
-  annoCanvas.getContext("2d").setTransform(ratio,0,0,ratio,0,0);
-  annoCtx = annoCanvas.getContext("2d");
-  annoWidth = w; annoHeight = h;
-  annoCanvas.style.pointerEvents = "auto";
-  redrawAll();
-  return true;
-}
+  <!-- THEME MODAL -->
+  <div id="themeModal" class="modal">
+    <div class="modal-panel theme-panel">
+      <div class="modal-head">
+        <h3>Select Theme</h3>
+        <button id="closeTheme" class="close-btn">✕</button>
+      </div>
+      <div class="theme-grid">
+        <div class="theme-card" data-theme="dark-glass"><div class="theme-preview tg-dark"></div><h4>Dark Glass</h4></div>
+        <div class="theme-card" data-theme="cyber-tech"><div class="theme-preview tg-cyber"></div><h4>Cyber Tech</h4></div>
+        <div class="theme-card" data-theme="retro-beige"><div class="theme-preview tg-retro"></div><h4>Retro Beige</h4></div>
+        <div class="theme-card" data-theme="flaming-orange"><div class="theme-preview tg-orange"></div><h4>Flaming Orange</h4></div>
+      </div>
+    </div>
+  </div>
 
-function clearAnno(){
-  if(!annoCtx) return;
-  annoCtx.clearRect(0,0,annoWidth,annoHeight);
-  actionsStack = [];
-  redoStack = [];
-}
+  <!-- ABOUT MODAL -->
+  <div id="aboutModal" class="modal">
+    <div class="modal-panel about-panel">
+      <div class="modal-head">
+        <div class="about-head">
+          <span class="about-pill">About</span>
+          <h3>Meta Media Hub</h3>
+          <p>Internal image toolkit for fast, safe e-learning & media production.</p>
+        </div>
+        <button id="closeAbout" class="close-btn">✕</button>
+      </div>
+      <div class="about-grid">
+        <div class="about-col">
+          <h4>What it does</h4>
+          <ul>
+            <li>Batch resize with smart human detection</li>
+            <li>Manual focus cropping for key subjects</li>
+            <li>AI-style enhancement (upscale, sharpen, denoise)</li>
+            <li>Download enhanced image</li>
+          </ul>
+        </div>
+        <div class="about-col">
+          <h4>Safety & workflow</h4>
+          <ul>
+            <li>All processing stays inside your browser</li>
+            <li>No uploads, no cloud, safe for confidential assets</li>
+            <li>Designed for META e-learning & media teams</li>
+            <li>Ideal for ILTs, WBTs, storyboards & thumbnails</li>
+          </ul>
+        </div>
+      </div>
+      <div class="about-footer-row">
+        <span class="about-meta">v1.6 • Designed & built by <strong>Mukesh Yadav</strong></span>
+        <span class="about-meta">Contact: META E-learning / Media team</span>
+      </div>
+    </div>
+  </div>
 
-function redrawAll(){
-  if(!annoCtx) return;
-  annoCtx.clearRect(0,0,annoWidth,annoHeight);
-  for(const a of actionsStack) drawAction(annoCtx, a);
-}
+  <!-- IMPORTANT: reference your local JS file here -->
+  <!-- The environment/tooling will transform this local path to a served URL -->
+  <script src="/mnt/data/script_v.js"></script>
+</body>
+</html>
+```
 
-function drawAction(ctx, action){
-  ctx.save();
-  ctx.lineCap = "round"; ctx.lineJoin = "round";
-  ctx.strokeStyle = action.color || "#ff7a3c";
-  ctx.fillStyle = action.color || "#ff7a3c";
-  ctx.lineWidth = Math.max(1, action.size || 4);
+---
 
-  if(action.tool === "rect"){
-    ctx.setLineDash([6,6]);
-    ctx.strokeRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
-    ctx.setLineDash([]);
-    ctx.globalAlpha = 0.12;
-    ctx.fillStyle = action.color || "#ff7a3c";
-    ctx.fillRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
-    ctx.globalAlpha = 1;
-  } else if(action.tool === "arrow"){
-    ctx.beginPath(); ctx.moveTo(action.x, action.y); ctx.lineTo(action.x2, action.y2); ctx.stroke();
-    const ang = Math.atan2(action.y2 - action.y, action.x2 - action.x);
-    const headlen = Math.max(8, ctx.lineWidth * 2.2);
-    ctx.beginPath();
-    ctx.moveTo(action.x2, action.y2);
-    ctx.lineTo(action.x2 - headlen * Math.cos(ang - Math.PI/7), action.y2 - headlen * Math.sin(ang - Math.PI/7));
-    ctx.lineTo(action.x2 - headlen * Math.cos(ang + Math.PI/7), action.y2 - headlen * Math.sin(ang + Math.PI/7));
-    ctx.closePath();
-    ctx.fill();
-  } else if(action.tool === "text"){
-    ctx.font = `${Math.max(12, action.size*3)}px Inter, system-ui, sans-serif`;
-    ctx.fillStyle = action.color || "#ff7a3c";
-    ctx.fillText(action.text || "", action.x, action.y);
-  } else if(action.tool === "highlight"){
-    ctx.globalAlpha = 0.25;
-    ctx.fillStyle = action.color || "#ff7a3c";
-    ctx.fillRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
-    ctx.globalAlpha = 1;
-  } else if(action.tool === "blur"){
-    // visual indicator; actual blur happens on merge
-    ctx.globalAlpha = 0.6;
-    ctx.fillStyle = "rgba(0,0,0,0.45)";
-    ctx.fillRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
-    ctx.globalAlpha = 1;
-  } else if(action.tool === "free"){
-    const pts = action.points || [];
-    if(pts.length){
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.stroke();
-    }
-  }
-  ctx.restore();
-}
+## style.css
 
-/* toolbar buttons */
-annoButtons.forEach(b=>{
-  b.addEventListener("click", ()=>{
-    annoButtons.forEach(x=>x.classList.remove("active"));
-    b.classList.add("active");
-    annoActiveTool = b.dataset.tool;
-    if(annoToolbar) annoToolbar.style.display = "flex";
-    ensureAnnoCanvas();
-  });
-});
+```css
+/* Updated / cleaned CSS matched to the HTML & script_v.js */
+:root{ --bg:#060608; --card:#111217; --panel:#15161d; --text:#f3f3f6; --muted:#8f93a2; --accent:#ff7a3c; --accent-light:#ffb27a; --border:rgba(255,255,255,0.08); --shadow:0 20px 60px rgba(0,0,0,0.80); }
 
-/* undo/clear/apply */
-if(annClear) annClear.addEventListener("click", ()=> { clearAnno(); redrawAll(); });
-if(annUndo) annUndo.addEventListener("click", ()=> {
-  if(actionsStack.length) { redoStack.push(actionsStack.pop()); redrawAll(); }
-});
-if(annApply) annApply.addEventListener("click", () => {
-  if(!enhanceCanvas.width) return alert("No image to apply annotations to.");
-  mergeAnnotationsToEnhanceCanvas();
-  // update preview
-  const q = enhQuality ? (parseInt(enhQuality.value)||92)/100 : 0.92;
-  const out = enhanceCanvas.toDataURL("image/jpeg", q);
-  afterImg.src = out;
-  if(enhStatus) enhStatus.textContent = "Annotations applied to image.";
-  // clear overlays
-  clearAnno();
-  redrawAll();
-});
+.theme-light{ --bg:#f7f3ef; --card:#ffffff; --panel:#fdf8f4; --text:#140f0b; --muted:#6c5b4d; --accent:#c65424; }
+html,body{ height:100%; margin:0; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Inter', Arial, sans-serif; }
+.app-wrap{ max-width:1100px; margin:auto; padding:26px; }
+.topbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; }
+.brand{ display:flex; align-items:center; gap:12px; }
+.logo{ width:46px; height:46px; border-radius:12px; background:radial-gradient(circle at 0 0, var(--accent), #2b0e07); display:flex; align-items:center; justify-content:center; color:#fff4eb; font-weight:700; }
+.right{ display:flex; align-items:center; gap:10px; }
+.theme-toggle{ background:transparent; border:0; cursor:pointer; font-size:18px; }
+.status{ color:var(--muted); }
+.about-btn{ width:36px; height:36px; border-radius:8px; border:1px solid var(--border); background:linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); color:var(--accent-light); }
+.home-section{ display:flex; justify-content:center; gap:24px; padding:36px 0 8px; }
+.tool-card{ width:320px; padding:26px; border-radius:18px; background:radial-gradient(circle at top left, rgba(255,122,60,0.18), transparent 55%), var(--panel); border:1px solid rgba(255,255,255,0.05); box-shadow:var(--shadow); cursor:pointer; text-align:center; }
+.section{ opacity:0; transition:opacity .35s; }
+.section.active{ opacity:1; }
+.panel{ background:var(--panel); border-radius:12px; padding:16px; border:1px solid rgba(255,255,255,0.06); }
+.dropzone{ padding:18px; border-radius:12px; border:1px dashed rgba(255,255,255,0.18); cursor:pointer; text-align:center; }
+.file-list{ margin-top:8px; padding:10px; background:rgba(0,0,0,0.35); border-radius:8px; max-height:160px; overflow:auto; }
+.two-input{ display:flex; gap:10px; margin:12px 0; }
+.input{ padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--text); }
+.controls{ display:flex; align-items:center; gap:10px; }
+.btn{ padding:10px 14px; border-radius:999px; border:0; cursor:pointer; }
+.btn.primary{ background:linear-gradient(135deg,var(--accent),#c65424); color:#200b05; }
+.btn.ghost{ background:transparent; border:1px solid rgba(255,255,255,0.08); color:var(--text); }
+.progress{ height:10px; background:rgba(255,255,255,0.04); border-radius:999px; overflow:hidden; }
+.progress .bar{ height:100%; width:0; background:var(--accent); }
+.preview-area{ position:relative; height:420px; background:#000; border-radius:12px; overflow:hidden; margin-top:10px; }
+.preview-area img{ position:absolute; top:0; left:0; width:100%; height:100%; object-fit:contain; pointer-events:none; }
+.after-layer{ position:absolute; top:0; left:0; height:100%; overflow:hidden; pointer-events:none; }
+.annotation-toolbar{ margin-top:12px; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,0.04); }
+.anno-btn{ padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:var(--text); }
+.anno-btn.active{ background:var(--accent); color:#120000; }
+.anno-control{ margin-left:8px; }
+.anno-btn, .anno-control input{ vertical-align:middle; }
+.anno-control input[type="color"]{ width:36px; height:28px; padding:0; border-radius:6px; border:1px solid rgba(0,0,0,0.12); }
+.modal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.7); }
+.modal-panel{ background:var(--card); padding:16px; border-radius:12px; max-width:900px; width:92%; }
+.small-muted{ color:var(--muted); }
+.footer{ text-align:center; margin-top:20px; color:var(--muted); }
 
-/* annotation drawing events */
-if(annoCanvas){
-  // mousedown
-  annoCanvas.addEventListener("mousedown", e=>{
-    if(!annoActiveTool) return;
-    drawing = true;
-    const r = annoCanvas.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    startX = x; startY = y;
+/* responsive */
+@media (max-width:880px){ .enhancer-layout{ grid-template-columns:1fr; } .two-input{ flex-direction:column; } }
+```
 
-    if(annoActiveTool === "free"){
-      const action = { tool:"free", color: annColor ? annColor.value : "#ff7a3c", size: annSize ? parseInt(annSize.value||4) : 4, points:[{x,y}] };
-      actionsStack.push(action);
-    } else if(annoActiveTool === "text"){
-      const txt = prompt("Enter text to add:");
-      if(!txt) { drawing = false; return; }
-      const action = { tool:"text", x, y, color: annColor ? annColor.value : "#ff7a3c", size: annSize ? parseInt(annSize.value||14) : 14, text: txt };
-      actionsStack.push(action);
-      redrawAll();
-      drawing = false;
-    } else {
-      const action = { tool: annoActiveTool, x, y, x2: x, y2: y, color: annColor ? annColor.value : "#ff7a3c", size: annSize ? parseInt(annSize.value||4) : 4 };
-      actionsStack.push(action);
-    }
-  });
+---
 
-  // mousemove
-  annoCanvas.addEventListener("mousemove", e=>{
-    if(!drawing) return;
-    const r = annoCanvas.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    const cur = actionsStack[actionsStack.length - 1];
-    if(!cur) return;
-    if(cur.tool === "free"){
-      cur.points.push({x,y});
-    } else {
-      cur.x2 = x; cur.y2 = y;
-    }
-    redrawAll();
-  });
+### Notes / instructions
 
-  // mouseup
-  document.addEventListener("mouseup", ()=> {
-    if(drawing) {
-      drawing = false;
-      redrawAll();
-    }
-  });
-}
+* I referenced your JS from the local path: `/mnt/data/script_v.js`. If your environment requires a different path, replace the `<script src="/mnt/data/script_v.js"></script>` line in the HTML with the served URL.
+* The HTML/CSS are aligned to the IDs and elements used in the `script_v.js` you supplied. No other JS changes should be required.
+* I removed ZIP export text from buttons since you said you don't need it.
+* If you want the files packaged separately (actual `.html` and `.css` files) I can create downloadable files next.
 
-/* ======================
-   Merge annotations into enhanceCanvas
-   - scale display coords => image natural coords
-   - applies blur actions as multi-pass gaussian on image pixel region
-   ========================*/
-function mergeAnnotationsToEnhanceCanvas(){
-  if(!enhanceCanvas.width || !previewArea) return;
-  // create tmp canvas at image resolution
-  const tmp = document.createElement("canvas");
-  tmp.width = enhanceCanvas.width; tmp.height = enhanceCanvas.height;
-  const tctx = tmp.getContext("2d");
-  // draw current image
-  tctx.drawImage(enhanceCanvas, 0, 0);
+---
 
-  // compute display rect
-  const dispRect = previewArea.getBoundingClientRect();
-  const dispW = dispRect.width, dispH = dispRect.height;
-  const scaleX = enhanceCanvas.width / Math.max(1, dispW);
-  const scaleY = enhanceCanvas.height / Math.max(1, dispH);
+If you want, I can now:
 
-  for(const a of actionsStack){
-    if(a.tool === "text"){
-      tctx.fillStyle = a.color || "#ff7a3c";
-      tctx.font = `${Math.max(12, a.size*3) * scaleX}px Inter, sans-serif`;
-      tctx.fillText(a.text || "", a.x * scaleX, a.y * scaleY);
-    } else if(a.tool === "rect" || a.tool === "highlight"){
-      const sx = Math.round(Math.min(a.x,a.x2) * scaleX);
-      const sy = Math.round(Math.min(a.y,a.y2) * scaleY);
-      const sw = Math.round(Math.abs(a.x2 - a.x) * scaleX);
-      const sh = Math.round(Math.abs(a.y2 - a.y) * scaleY);
-      if(a.tool === "rect"){
-        tctx.strokeStyle = a.color || "#ff7a3c";
-        tctx.lineWidth = Math.max(2, a.size || 4) * Math.max(scaleX, scaleY);
-        tctx.setLineDash([6 * scaleX, 6 * scaleX]);
-        tctx.strokeRect(sx, sy, sw, sh);
-        tctx.setLineDash([]);
-        tctx.fillStyle = "rgba(255,122,60,0.12)";
-        tctx.fillRect(sx, sy, sw, sh);
-      } else {
-        tctx.globalAlpha = 0.25;
-        tctx.fillStyle = a.color || "#ff7a3c";
-        tctx.fillRect(sx, sy, sw, sh);
-        tctx.globalAlpha = 1;
-      }
-    } else if(a.tool === "arrow"){
-      tctx.strokeStyle = a.color || "#ff7a3c";
-      tctx.lineWidth = Math.max(2, a.size || 4) * Math.max(scaleX, scaleY);
-      const x1 = a.x * scaleX, y1 = a.y * scaleY, x2 = a.x2 * scaleX, y2 = a.y2 * scaleY;
-      tctx.beginPath(); tctx.moveTo(x1, y1); tctx.lineTo(x2, y2); tctx.stroke();
-      const ang = Math.atan2(y2 - y1, x2 - x1);
-      const head = Math.max(8, tctx.lineWidth * 2.2);
-      tctx.beginPath();
-      tctx.moveTo(x2, y2);
-      tctx.lineTo(x2 - head * Math.cos(ang - Math.PI/7), y2 - head * Math.sin(ang - Math.PI/7));
-      tctx.lineTo(x2 - head * Math.cos(ang + Math.PI/7), y2 - head * Math.sin(ang + Math.PI/7));
-      tctx.closePath();
-      tctx.fillStyle = a.color || "#ff7a3c";
-      tctx.fill();
-    } else if(a.tool === "blur"){
-      // apply blur on region
-      const sx = Math.round(Math.min(a.x,a.x2) * scaleX);
-      const sy = Math.round(Math.min(a.y,a.y2) * scaleY);
-      const sw = Math.max(1, Math.round(Math.abs(a.x2 - a.x) * scaleX));
-      const sh = Math.max(1, Math.round(Math.abs(a.y2 - a.y) * scaleY));
-      try{
-        let region = tctx.getImageData(sx, sy, sw, sh);
-        // multi-pass gaussian
-        const passes = 7;
-        for(let p=0;p<passes;p++) region = gaussianBlur(region);
-        tctx.putImageData(region, sx, sy);
-      }catch(e){
-        console.warn("blur region failed", e);
-      }
-    } else if(a.tool === "free"){
-      tctx.strokeStyle = a.color || "#ff7a3c";
-      tctx.lineWidth = Math.max(1, a.size || 4) * Math.max(scaleX, scaleY);
-      tctx.beginPath();
-      const pts = a.points || [];
-      if(pts.length){
-        tctx.moveTo(pts[0].x * scaleX, pts[0].y * scaleY);
-        for(let i=1;i<pts.length;i++) tctx.lineTo(pts[i].x * scaleX, pts[i].y * scaleY);
-        tctx.stroke();
-      }
-    }
-  }
+* produce separate downloadable `index.html` and `style.css` files, or
+* embed the CSS inline into the HTML, or
+* test a quick small JS fix for any remaining UI bugs you reported.
 
-  // copy tmp back to enhanceCanvas
-  enhanceCtx.clearRect(0,0,enhanceCanvas.width, enhanceCanvas.height);
-  enhanceCtx.drawImage(tmp, 0, 0);
-}
-
-/* gaussian blur (separable 5-tap) */
-function gaussianBlur(imgData){
-  const w = imgData.width, h = imgData.height;
-  const src = imgData.data;
-  const tmp = new Uint8ClampedArray(src.length);
-  const out = new Uint8ClampedArray(src.length);
-  const weights = [0.1201,0.2339,0.2920,0.2339,0.1201];
-  const half = 2;
-  // horizontal pass
-  for(let row=0; row<h; row++){
-    for(let col=0; col<w; col++){
-      let r=0,g=0,b=0,a=0;
-      for(let k=-half; k<=half; k++){
-        const x = Math.min(w-1, Math.max(0, col + k));
-        const idx = (row*w + x)*4;
-        const wt = weights[k+half];
-        r += src[idx] * wt; g += src[idx+1] * wt; b += src[idx+2] * wt; a += src[idx+3] * wt;
-      }
-      const idxOut = (row*w + col)*4;
-      tmp[idxOut] = r; tmp[idxOut+1] = g; tmp[idxOut+2] = b; tmp[idxOut+3] = a;
-    }
-  }
-  // vertical pass
-  for(let col=0; col<w; col++){
-    for(let row=0; row<h; row++){
-      let r=0,g=0,b=0,a=0;
-      for(let k=-half; k<=half; k++){
-        const y = Math.min(h-1, Math.max(0, row + k));
-        const idx = (y*w + col)*4;
-        const wt = weights[k+half];
-        r += tmp[idx] * wt; g += tmp[idx+1] * wt; b += tmp[idx+2] * wt; a += tmp[idx+3] * wt;
-      }
-      const idxOut = (row*w + col)*4;
-      out[idxOut] = r; out[idxOut+1] = g; out[idxOut+2] = b; out[idxOut+3] = a;
-    }
-  }
-  imgData.data.set(out);
-  return imgData;
-}
-
-/* download helper */
-function downloadDataURL(dataURL, filename="image.jpg"){
-  const a = document.createElement("a");
-  a.href = dataURL;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-/* small init & resize handlers */
-window.addEventListener("resize", ()=> {
-  ensureAnnoCanvas();
-});
-ensureAnnoCanvas();
-
-/* keep preview images non-interactive */
-if(beforeImg) beforeImg.style.pointerEvents = "none";
-if(afterImg) afterImg.style.pointerEvents = "none";
-
-/* keyboard escape to close modals */
-document.addEventListener("keydown", (e)=>{
-  if(e.key === "Escape"){
-    ["aboutModal","themeModal"].forEach(id=>{
-      const m = $(id);
-      if(m) m.style.display = "none";
-    });
-  }
-});
-
-/* global error catch so UI doesn't freeze on script errors */
-window.addEventListener("error", ev=>{
-  console.error("Runtime error:", ev.error || ev.message);
-});
-
-/* final default view */
-showSection(isAuthed() ? "home" : "home");
+Tell me which next step you want.
