@@ -49,7 +49,7 @@
       <div class="tool-card" id="btnEnhancer">
         <div class="icon">✨</div>
         <h3>AI Image Enhancer</h3>
-        <p>Upscale • Sharpen • Denoise • Boost Quality</p>
+        <p>Upscale • Sharpen • Denoise • HDR • Text clarity</p>
       </div>
     </section>
 
@@ -121,7 +121,7 @@
       <div class="section-header">
         <div>
           <h2>AI Image Enhancer</h2>
-          <p class="subtitle">Improve quality: upscale, sharpen, denoise — right in the browser.</p>
+          <p class="subtitle">Improve quality: upscale, sharpen, denoise, HDR & text clarity — right in the browser.</p>
         </div>
         <button id="backHomeFromEnhancer" class="back-btn">← Home</button>
       </div>
@@ -169,6 +169,27 @@
                 <span>Denoise & Sharpen</span>
                 <div class="help-tip" data-tip="Reduces grain and applies gentle sharpening. Good for noisy screenshots or compressed JPEGs.">?</div>
               </label>
+
+              <!-- NEW: OCR / HDR / HIDE -->
+              <label class="ai-option">
+                <input type="checkbox" id="enhOCR">
+                <span>Text / OCR Clarity</span>
+                <div class="help-tip" data-tip="Enhances edges & contrast in UI screenshots and documents so small text stays crisp.">?</div>
+              </label>
+              <label class="ai-option">
+                <input type="checkbox" id="enhHDR">
+                <span>HDR Boost (Shadows & Highlights)</span>
+                <div class="help-tip" data-tip="Lifts dark areas and tames strong highlights to make faces & details more visible.">?</div>
+              </label>
+              <label class="ai-option">
+                <input type="checkbox" id="enhHide">
+                <span>Object Hide / Privacy Blur</span>
+                <div class="help-tip" data-tip="Blur a selected rectangle (face, ID, logo) without affecting the rest of the image.">?</div>
+              </label>
+            </div>
+
+            <div class="btn-row small-row">
+              <button id="hideAreaBtn" class="btn ghost">Set Hide Area</button>
             </div>
 
             <p class="ai-note">
@@ -240,6 +261,31 @@
       </div>
     </div>
 
+    <!-- OBJECT HIDE MODAL (for enhancer) -->
+    <div id="hideModal" class="modal">
+      <div class="modal-panel large">
+        <div class="modal-head">
+          <h3>Object Hide Area</h3>
+          <button id="closeHide" class="close-btn">✕</button>
+        </div>
+        <p class="small-muted">
+          Drag the rectangle over the area you want to blur (logo, face, ID, etc.).
+        </p>
+
+        <div id="hideCanvas" class="focus-canvas">
+          <img id="hidePreview">
+          <div id="hideRect" class="focus-rect">
+            <div class="focus-handle"></div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button id="saveHide" class="btn primary">Save Hide Area</button>
+          <button id="clearHide" class="btn ghost">Clear</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ABOUT MODAL -->
     <div id="aboutModal" class="modal">
       <div class="modal-panel about-panel">
@@ -275,7 +321,7 @@
         </div>
 
         <div class="about-footer-row">
-          <span class="about-meta">v1.5 • Designed & built by <strong>Mukesh Yadav</strong></span>
+          <span class="about-meta">v1.6 • Designed & built by <strong>Mukesh Yadav</strong></span>
           <span class="about-meta">Contact: META E-learning / Media team</span>
         </div>
       </div>
