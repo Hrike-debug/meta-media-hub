@@ -8,6 +8,7 @@
 </head>
 
 <body>
+
   <div class="app-wrap">
 
     <!-- TOP BAR -->
@@ -21,9 +22,10 @@
       </div>
 
       <div class="right">
+        <button id="themeBtn" class="about-btn" title="Choose Theme">🎨</button>
+        <button id="aboutBtn" class="about-btn" title="About this tool">i</button>
         <button id="themeToggle" class="theme-toggle" title="Toggle light/dark">🌙</button>
         <span id="statusText" class="status">Locked</span>
-        <button id="aboutBtn" class="about-btn" title="About this tool">i</button>
       </div>
     </header>
 
@@ -149,42 +151,13 @@
             </div>
 
             <div class="ai-options">
-              <label class="ai-option">
-                <input type="checkbox" id="enhUpscale2x">
-                <span>Upscale ×2 (Super Resolution-lite)</span>
-                <div class="help-tip" data-tip="Enlarges the image 2× with high-quality smoothing + edge boost. Good for slightly low-res images.">?</div>
-              </label>
-              <label class="ai-option">
-                <input type="checkbox" id="enhUpscale4x">
-                <span>Upscale ×4 (Deep Detail)</span>
-                <div class="help-tip" data-tip="Massive enlargement with extra sharpening. Best for hero shots / thumbnails. Heavier processing.">?</div>
-              </label>
-              <label class="ai-option">
-                <input type="checkbox" id="enhFaceEnhance">
-                <span>Boost Faces & Detail</span>
-                <div class="help-tip" data-tip="Unsharp mask style enhancement — sharpens edges and facial details without overdoing it.">?</div>
-              </label>
-              <label class="ai-option">
-                <input type="checkbox" id="enhDenoise">
-                <span>Denoise & Smooth</span>
-                <div class="help-tip" data-tip="Softens grain / compression noise before sharpening, especially for low-quality JPEGs.">?</div>
-              </label>
-
-              <label class="ai-option">
-                <input type="checkbox" id="enhOCR">
-                <span>Text / OCR Clarity</span>
-                <div class="help-tip" data-tip="Makes UI / text screenshots crisper by boosting local contrast.">?</div>
-              </label>
-              <label class="ai-option">
-                <input type="checkbox" id="enhHDR">
-                <span>HDR Boost (Shadows & Highlights)</span>
-                <div class="help-tip" data-tip="Lifts shadows and gently compresses highlights so faces & UI are easier to read.">?</div>
-              </label>
-              <label class="ai-option">
-                <input type="checkbox" id="enhHide">
-                <span>Object Hide / Privacy Blur</span>
-                <div class="help-tip" data-tip="Blur a selected rectangle (face, ID, logo) without touching the rest of the image.">?</div>
-              </label>
+              <label class="ai-option"><input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhHDR"><span>HDR Boost (Shadows & Highlights)</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhHide"><span>Object Hide / Privacy Blur</span></label>
             </div>
 
             <div class="btn-row small-row">
@@ -207,141 +180,102 @@
           </div>
 
           <div class="btn-row">
-            <button id="enhPreviewBtn" class="btn ghost">Preview (Before / After)</button>
+            <button id="enhPreviewBtn" class="btn ghost">Preview</button>
             <button id="enhRunBtn" class="btn primary">Enhance & Download</button>
           </div>
 
           <div class="progress"><div id="enhProgress" class="bar"></div></div>
           <p id="enhStatus" class="status-text">Waiting for image.</p>
-
-          <!-- ANNOTATION AREA -->
-          <div class="annot-wrap">
-            <div class="annot-toolbar">
-              <span class="annot-label">Annotate Output</span>
-              <button id="toolRect"  class="annot-btn active" title="Rectangle highlight">▢</button>
-              <button id="toolArrow" class="annot-btn" title="Arrow">➤</button>
-              <button id="toolText"  class="annot-btn" title="Text label">T</button>
-              <button id="annotClear" class="annot-btn" title="Clear annotations">✕</button>
-              <button id="annotApply" class="btn primary annot-apply">Apply to Image</button>
-            </div>
-            <div class="annot-area">
-              <canvas id="annotCanvas"></canvas>
-              <div class="annot-empty" id="annotEmptyMsg">Run Enhance once to load image for annotation.</div>
-            </div>
-            <p class="small-muted">
-              Annotations are applied on top of the enhanced version and included in the final download (rectangles, arrows, labels).
-            </p>
-          </div>
         </div>
       </div>
+
+      <!-- ANNOTATION / PREVIEW AREA (shared) -->
+      <div class="panel" style="margin-top:14px">
+        <div class="panel-title">Annotate / Preview</div>
+
+        <div id="previewArea" class="preview-area" aria-hidden="true">
+          <img id="beforeImg" alt="Before" />
+          <div id="afterLayer" class="after-layer"><img id="afterImg" alt="After" /></div>
+
+          <!-- Annotation canvas overlays the preview area -->
+          <canvas id="annoCanvas" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto;"></canvas>
+          <div id="annoHandle" class="handle" style="display:none"></div>
+        </div>
+
+        <!-- Annotation toolbar (Option B) -->
+        <div id="annoToolbar" class="annotation-toolbar" style="display:none">
+          <div class="controls-row">
+            <button class="anno-btn" data-tool="rect">Rectangle</button>
+            <button class="anno-btn" data-tool="arrow">Arrow</button>
+            <button class="anno-btn" data-tool="text">Text</button>
+            <button class="anno-btn" data-tool="highlight">Highlight</button>
+            <button class="anno-btn" data-tool="blur">Blur area</button>
+            <button class="anno-btn" id="annUndo">Undo</button>
+            <button class="anno-btn" id="annClear">Clear</button>
+            <label class="anno-control">Color <input id="annColor" type="color" value="#ff7a3c"></label>
+            <label class="anno-control">Size <input id="annSize" type="range" min="1" max="30" value="4"></label>
+            <button id="annApply" class="btn primary">Apply</button>
+          </div>
+          <div class="small muted" style="margin-top:8px">Draw on the image, then click Apply to merge annotations to the current enhanced image (client-only).</div>
+        </div>
+      </div>
+
     </section>
 
-    <!-- PREVIEW MODAL (shared) -->
-    <div id="previewModal" class="modal">
-      <div class="modal-panel large">
-        <div class="modal-head">
-          <h3 id="previewTitle">Preview</h3>
-          <button id="closePreview" class="close-btn">✕</button>
-        </div>
-        <p id="previewInfo" class="small-muted"></p>
+    <footer class="footer" style="margin-top:18px">Created by Mukesh Yadav • META E-learning Team</footer>
 
-        <div id="previewArea" class="preview-area">
-          <img id="beforeImg">
-          <div id="afterLayer" class="after-layer">
-            <img id="afterImg">
-          </div>
-          <div id="handle" class="handle"></div>
-        </div>
+  </div>
+
+  <!-- THEME MODAL -->
+  <div id="themeModal" class="modal">
+    <div class="modal-panel theme-panel">
+      <div class="modal-head">
+        <h3>Select Theme</h3>
+        <button id="closeTheme" class="close-btn">✕</button>
+      </div>
+      <div class="theme-grid">
+        <div class="theme-card" data-theme="dark-glass"><div class="theme-preview tg-dark"></div><h4>Dark Glass</h4></div>
+        <div class="theme-card" data-theme="cyber-tech"><div class="theme-preview tg-cyber"></div><h4>Cyber Tech</h4></div>
+        <div class="theme-card" data-theme="retro-beige"><div class="theme-preview tg-retro"></div><h4>Retro Beige</h4></div>
+        <div class="theme-card" data-theme="flaming-orange"><div class="theme-preview tg-orange"></div><h4>Flaming Orange</h4></div>
       </div>
     </div>
+  </div>
 
-    <!-- MANUAL FOCUS MODAL (resizer) -->
-    <div id="focusModal" class="modal">
-      <div class="modal-panel large">
-        <div class="modal-head">
-          <h3>Manual Focus</h3>
-          <button id="closeFocus" class="close-btn">✕</button>
+  <!-- ABOUT MODAL -->
+  <div id="aboutModal" class="modal">
+    <div class="modal-panel about-panel">
+      <div class="modal-head">
+        <div class="about-head">
+          <span class="about-pill">About</span>
+          <h3>Meta Media Hub</h3>
+          <p>Internal image toolkit for fast, safe e-learning & media production.</p>
         </div>
-
-        <select id="focusSelect" class="input"></select>
-
-        <div id="focusCanvas" class="focus-canvas">
-          <img id="focusPreview">
-          <div id="focusRect" class="focus-rect">
-            <div class="focus-handle"></div>
-          </div>
+        <button id="closeAbout" class="close-btn">✕</button>
+      </div>
+      <div class="about-grid">
+        <div class="about-col">
+          <h4>What it does</h4>
+          <ul>
+            <li>Batch resize with smart human detection</li>
+            <li>Manual focus cropping for key subjects</li>
+            <li>AI-style enhancement (upscale, sharpen, denoise)</li>
+            <li>ZIP export for quick LMS uploads</li>
+          </ul>
         </div>
-
-        <div class="btn-row">
-          <button id="saveFocus" class="btn primary">Save Focus</button>
-          <button id="clearFocus" class="btn ghost">Clear</button>
+        <div class="about-col">
+          <h4>Safety & workflow</h4>
+          <ul>
+            <li>All processing stays inside your browser</li>
+            <li>No uploads, no cloud, safe for confidential assets</li>
+            <li>Designed for META e-learning & media teams</li>
+            <li>Ideal for ILTs, WBTs, storyboards & thumbnails</li>
+          </ul>
         </div>
       </div>
-    </div>
-
-    <!-- OBJECT HIDE MODAL (for enhancer) -->
-    <div id="hideModal" class="modal">
-      <div class="modal-panel large">
-        <div class="modal-head">
-          <h3>Object Hide Area</h3>
-          <button id="closeHide" class="close-btn">✕</button>
-        </div>
-        <p class="small-muted">
-          Drag the rectangle over the area you want to blur (logo, face, ID, etc.).
-        </p>
-
-        <div id="hideCanvas" class="focus-canvas">
-          <img id="hidePreview">
-          <div id="hideRect" class="focus-rect">
-            <div class="focus-handle"></div>
-          </div>
-        </div>
-
-        <div class="btn-row">
-          <button id="saveHide" class="btn primary">Save Hide Area</button>
-          <button id="clearHide" class="btn ghost">Clear</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ABOUT MODAL -->
-    <div id="aboutModal" class="modal">
-      <div class="modal-panel about-panel">
-        <div class="modal-head">
-          <div class="about-head">
-            <span class="about-pill">About</span>
-            <h3>Meta Media Hub</h3>
-            <p>Internal image toolkit for fast, safe e-learning & media production.</p>
-          </div>
-          <button id="closeAbout" class="close-btn">✕</button>
-        </div>
-
-        <div class="about-grid">
-          <div class="about-col">
-            <h4>What it does</h4>
-            <ul>
-              <li>Batch resize with smart human detection</li>
-              <li>Manual focus cropping for key subjects</li>
-              <li>AI-style enhancement (upscale, sharpen, denoise)</li>
-              <li>ZIP export for quick LMS uploads</li>
-            </ul>
-          </div>
-
-          <div class="about-col">
-            <h4>Safety & workflow</h4>
-            <ul>
-              <li>All processing stays inside your browser</li>
-              <li>No uploads, no cloud, safe for confidential assets</li>
-              <li>Designed for META e-learning & media teams</li>
-              <li>Ideal for ILTs, WBTs, storyboards & thumbnails</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="about-footer-row">
-          <span class="about-meta">v1.7 • Designed & built by <strong>Mukesh Yadav</strong></span>
-          <span class="about-meta">Contact: META E-learning / Media team</span>
-        </div>
+      <div class="about-footer-row">
+        <span class="about-meta">v1.6 • Designed & built by <strong>Mukesh Yadav</strong></span>
+        <span class="about-meta">Contact: META E-learning / Media team</span>
       </div>
     </div>
   </div>
