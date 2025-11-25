@@ -1,28 +1,26 @@
-/* script_v.js
-   Meta Media Hub — Unified script
+/* ==========================================================
+   script_v.js
+   Meta Media Hub — Unified client-side script
    - Auth + theme + navigation
-   - Image upload + coco-ssd person detection (optional)
-   - Enhancer: OCR boost, HDR, multi-pass blur
-   - Annotation canvas with tools (rect, arrow, text, highlight, blur)
-   - Preview modal (slider) and inline preview (annotation overlay)
-   - Tooltips from data-tip
-   - All client-side, no server
-*/
+   - Image upload + optional coco-ssd person detection
+   - Enhancer: OCR boost, HDR
+   - Annotation canvas with tools (rect, arrow, text, highlight, blur, free)
+   - Preview updates inline (no new window), no ZIP
+   - All client-side
+   =========================================================*/
 
 /* -------------------------
    Small helpers
 --------------------------*/
 const $ = id => document.getElementById(id);
-const q = sel => document.querySelector(sel);
 const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
-
-function safeGet(id){ return $(id) || document.querySelector(`[name="${id}"]`) || null; }
 
 /* -------------------------
    AUTH + SECTIONS
 --------------------------*/
 const PASSWORD = "Meta@123";
 const AUTH_KEY = "mm_auth_v4";
+const THEME_KEY = "mm_theme_choice";
 
 const pwModal = $("pwModal"), pwInput = $("pwInput"), pwBtn = $("pwBtn"), pwMsg = $("pwMsg");
 const statusText = $("statusText");
@@ -31,20 +29,15 @@ function isAuthed(){ return localStorage.getItem(AUTH_KEY) === "true"; }
 function saveAuth(v){ if(v) localStorage.setItem(AUTH_KEY,"true"); else localStorage.removeItem(AUTH_KEY); }
 
 function showSection(name){
-  const home = $("home");
-  const imageSection = $("imageSection");
-  const enhancerSection = $("enhancerSection");
+  const home = $("home"), imageSection = $("imageSection"), enhancerSection = $("enhancerSection");
+  if(home) home.style.display = (name==="home") ? "flex" : "none";
+  if(imageSection) imageSection.style.display = (name==="resize") ? "block" : "none";
+  if(enhancerSection) enhancerSection.style.display = (name==="enhance") ? "block" : "none";
 
-  if(home) home.style.display = name==="home" ? "flex" : "none";
-  if(imageSection) imageSection.style.display = name==="resize" ? "block" : "none";
-  if(enhancerSection) enhancerSection.style.display = name==="enhance" ? "block" : "none";
-
-  // for animations class toggles
-  document.querySelectorAll(".section, .home-section").forEach(el=>{
-    el.classList.remove("active");
-  });
-  const active = name==="home" ? home : (name==="resize" ? imageSection : enhancerSection);
-  if(active) setTimeout(()=> active.classList.add("active"),10);
+  // small animation class toggle
+  document.querySelectorAll(".section, .home-section").forEach(el=>el.classList.remove("active"));
+  const active = (name==="home") ? home : (name==="resize") ? imageSection : enhancerSection;
+  if(active) setTimeout(()=> active.classList.add("active"), 12);
 }
 
 async function unlock(){
@@ -53,49 +46,50 @@ async function unlock(){
     saveAuth(true);
     if(pwModal) pwModal.style.display = "none";
     if(statusText) statusText.textContent = "Unlocked";
+    if(pwMsg) pwMsg.textContent = "";
     showSection("home");
-    pwMsg && (pwMsg.textContent = "");
   } else {
-    pwMsg && (pwMsg.textContent = "Incorrect password");
+    if(pwMsg) pwMsg.textContent = "Incorrect password";
   }
 }
 on(pwBtn, "click", unlock);
-on(pwInput, "keydown", e=> { if(e.key === "Enter") unlock(); });
+on(pwInput, "keydown", e => { if(e.key === "Enter") unlock(); });
 
 if(isAuthed()){
   if(pwModal) pwModal.style.display = "none";
   if(statusText) statusText.textContent = "Unlocked";
   showSection("home");
 } else {
-  // show pw modal (already visible in HTML)
+  // modal is shown by HTML initially
 }
 
-/* NAVIGATION buttons (defensive) */
+/* -------------------------
+   NAV + ABOUT + THEME
+--------------------------*/
 on($("btnImage"), "click", ()=> showSection("resize"));
-on($("btnEnhancer") || $("btnEnhancer"), "click", ()=> showSection("enhance"));
+on($("btnEnhancer"), "click", ()=> showSection("enhance"));
 on($("backHomeFromImage"), "click", ()=> showSection("home"));
 on($("backHomeFromEnhancer"), "click", ()=> showSection("home"));
 
-/* ABOUT modal */
-on($("aboutBtn"), "click", ()=> { const m=$("aboutModal"); if(m) m.style.display="flex"; });
-on($("closeAbout"), "click", ()=> { const m=$("aboutModal"); if(m) m.style.display="none"; });
+on($("aboutBtn"), "click", ()=> { const m = $("aboutModal"); if(m) m.style.display = "flex"; });
+on($("closeAbout"), "click", ()=> { const m = $("aboutModal"); if(m) m.style.display = "none"; });
 
-/* THEME toggle + theme modal */
 const themeToggle = $("themeToggle");
 const themeBtn = $("themeBtn");
 const themeModal = $("themeModal");
 const closeTheme = $("closeTheme");
-const THEME_KEY = "mm_theme_choice";
 
-function applyThemeKey(key){
-  // remove any theme-... classes from documentElement then add
-  document.documentElement.className = document.documentElement.className.split(/\s+/).filter(c=>!c.startsWith("theme-")).join(" ");
-  if(key) document.documentElement.classList.add(key);
+function applyThemeValue(key){
+  // remove previously applied theme-* classes but keep other classes
+  const classes = Array.from(document.documentElement.classList).filter(c=>!c.startsWith("theme-"));
+  document.documentElement.className = classes.join(" ");
+  if(key) document.documentElement.classList.add("theme-" + key);
   localStorage.setItem(THEME_KEY, key || "");
-  if(themeToggle) themeToggle.textContent = (key && key.startsWith("theme-")) ? "☀️" : "🌙";
+  // update icon
+  if(themeToggle) themeToggle.textContent = (key && key === "retro-beige") ? "☀️" : (document.documentElement.classList.contains("theme-light") ? "☀️" : "🌙");
 }
+
 on(themeToggle, "click", ()=>{
-  // simple light/dark toggle by presence of theme-light (we support theme-light in CSS)
   if(document.documentElement.classList.contains("theme-light")){
     document.documentElement.classList.remove("theme-light");
     localStorage.setItem(THEME_KEY,"");
@@ -104,38 +98,38 @@ on(themeToggle, "click", ()=>{
     localStorage.setItem(THEME_KEY,"theme-light");
   }
 });
-on(themeBtn, "click", ()=> themeModal && (themeModal.style.display="flex"));
-on(closeTheme, "click", ()=> themeModal && (themeModal.style.display="none"));
+
+on(themeBtn, "click", ()=> { if(themeModal) themeModal.style.display = "flex"; });
+on(closeTheme, "click", ()=> { if(themeModal) themeModal.style.display = "none"; });
+
 document.querySelectorAll(".theme-card").forEach(card=>{
-  card.addEventListener("click", ()=> {
+  card.addEventListener("click", ()=>{
     const t = card.dataset.theme;
-    if(t) applyThemeKey("theme-" + t);
-    themeModal.style.display="none";
+    if(t) applyThemeValue(t);
+    if(themeModal) themeModal.style.display = "none";
   });
 });
-// init theme from storage
-applyThemeKey(localStorage.getItem(THEME_KEY) || "");
+applyThemeValue(localStorage.getItem(THEME_KEY) || "");
 
 /* -------------------------
-   Tooltips from data-tip
+   Tooltips
 --------------------------*/
 const tooltipBox = document.createElement("div");
 tooltipBox.className = "tooltip-box";
+tooltipBox.style.display = "none";
 document.body.appendChild(tooltipBox);
 let tooltipTimer = null;
 document.querySelectorAll(".help-tip").forEach(el=>{
-  el.addEventListener("mouseenter", (ev)=>{
+  el.addEventListener("mouseenter", ()=>{
     const tip = el.dataset.tip || el.getAttribute("data-tip") || "Info";
     tooltipTimer = setTimeout(()=>{
       tooltipBox.textContent = tip;
       tooltipBox.style.display = "block";
       const r = el.getBoundingClientRect();
-      // position above element if space, otherwise below
-      const top = r.top - tooltipBox.offsetHeight - 8;
-      if(top > 8) tooltipBox.style.top = (top) + "px";
-      else tooltipBox.style.top = (r.bottom + 8) + "px";
-      tooltipBox.style.left = Math.min(window.innerWidth - tooltipBox.offsetWidth - 12, Math.max(8, r.left)) + "px";
-    }, 180);
+      const topTry = r.top - tooltipBox.offsetHeight - 8;
+      tooltipBox.style.top = (topTry > 8 ? topTry : (r.bottom + 8)) + "px";
+      tooltipBox.style.left = Math.max(8, Math.min(window.innerWidth - tooltipBox.offsetWidth - 8, r.left)) + "px";
+    }, 160);
   });
   el.addEventListener("mouseleave", ()=> {
     clearTimeout(tooltipTimer);
@@ -143,22 +137,13 @@ document.querySelectorAll(".help-tip").forEach(el=>{
   });
 });
 
-/* =========================
-   IMAGE RESIZER (scan only)
-   - uses coco-ssd if available
-============================*/
-let imageFiles = [];
-let imageDetectionMap = {};
-let cocoModel = null;
-
-const dropImage = $("dropImage");
-const imageInput = $("imageInput");
-const imageFileList = $("imageFileList");
-const smartBanner = $("smartBanner");
-const bannerIcon = $("bannerIcon");
-const bannerText = $("bannerText");
-const imgStatus = $("imgStatus");
-const imgAiToggle = $("imgAiToggle");
+/* ==========================================================
+   IMAGE RESIZER — (scan only, no zip) - uses coco-ssd if available
+==========================================================*/
+let imageFiles = [], imageDetectionMap = {}, cocoModel = null;
+const dropImage = $("dropImage"), imageInput = $("imageInput"), imageFileList = $("imageFileList");
+const smartBanner = $("smartBanner"), bannerIcon = $("bannerIcon"), bannerText = $("bannerText");
+const imgStatus = $("imgStatus"), imgAiToggle = $("imgAiToggle");
 
 if(dropImage) dropImage.addEventListener("click", ()=> imageInput && imageInput.click());
 if(imageInput){
@@ -168,11 +153,11 @@ if(imageInput){
   });
 }
 if(dropImage){
-  dropImage.addEventListener("dragover", e=> { e.preventDefault(); dropImage.style.background="rgba(255,255,255,0.02)"; });
-  dropImage.addEventListener("dragleave", ()=> { dropImage.style.background=""; });
-  dropImage.addEventListener("drop", async e=> {
+  dropImage.addEventListener("dragover", e=> { e.preventDefault(); dropImage.style.background = "rgba(255,255,255,0.02)"; });
+  dropImage.addEventListener("dragleave", ()=> { dropImage.style.background = ""; });
+  dropImage.addEventListener("drop", async e=>{
     e.preventDefault();
-    dropImage.style.background="";
+    dropImage.style.background = "";
     imageFiles = Array.from(e.dataTransfer.files || []);
     await handleNewImages();
   });
@@ -180,17 +165,17 @@ if(dropImage){
 
 function refreshImageList(){
   if(!imageFileList) return;
-  if(!imageFiles || !imageFiles.length){
+  if(!imageFiles.length){
     imageFileList.innerHTML = "No files uploaded.";
     if(smartBanner) smartBanner.style.display = "none";
     return;
   }
   imageFileList.innerHTML = imageFiles.map((f,i)=>{
     const st = imageDetectionMap[f.name] || "unknown";
-    let icon="⏳", label="Scanning…";
-    if(st==="person"){ icon="👤"; label="Human found"; }
-    else if(st==="none"){ icon="❌"; label="No person"; }
-    return `<div class="file-row"><span style="margin-right:10px">${icon}</span><div><b>${i+1}. ${f.name}</b><br><small>${label} • ${Math.round(f.size/1024)} KB</small></div></div>`;
+    let icon="⏳", text="Scanning…";
+    if(st === "person"){ icon = "👤"; text = "Human found"; }
+    if(st === "none"){ icon = "❌"; text = "No person"; }
+    return `<div class="file-row"><span style="margin-right:10px">${icon}</span><div><b>${i+1}. ${f.name}</b><br><small>${text} — ${Math.round(f.size/1024)} KB</small></div></div>`;
   }).join("");
 }
 
@@ -202,8 +187,8 @@ async function loadCoco(){
     if(imgStatus) imgStatus.textContent = "Model ready";
     return cocoModel;
   }catch(e){
-    console.warn("coco load failed:", e);
-    if(imgStatus) imgStatus.textContent = "Model failed to load";
+    console.warn("coco load fail", e);
+    if(imgStatus) imgStatus.textContent = "Model load failed";
     return null;
   }
 }
@@ -212,7 +197,7 @@ async function detectPerson(imgEl){
     await loadCoco();
     if(!cocoModel) return false;
     const preds = await cocoModel.detect(imgEl);
-    return preds.some(p=>p.class === "person");
+    return preds.some(p => p.class === "person");
   }catch(e){
     console.warn("detectPerson error", e);
     return false;
@@ -245,46 +230,62 @@ async function handleNewImages(){
   if(imgAiToggle) imgAiToggle.classList.toggle("active", found>0);
 }
 
-/* =========================
-   ENHANCER: canvas processing + UI
-============================*/
-const dropEnhance = $("dropEnhance");
-const enhanceInput = $("enhanceInput");
-const enhFileInfo = $("enhFileInfo");
-const enhQuality = $("enhQuality");
-const enhQualityVal = $("enhQualityVal");
-const enhRunBtn = $("enhRunBtn");
-const enhPreviewBtn = $("enhPreviewBtn");
-const enhOCR = $("enhOCR");
-const enhHDR = $("enhHDR");
-const enhHide = $("enhHide");
+/* ==========================================================
+   ENHANCER + ANNOTATION
+   - use one inline preview area (beforeImg & afterImg)
+   - annotation overlays on annoCanvas
+   - annApply merges into enhanceCanvas
+==========================================================*/
+
+/* DOM refs */
+const dropEnhance = $("dropEnhance"), enhanceInput = $("enhanceInput"), enhFileInfo = $("enhFileInfo");
+const enhQuality = $("enhQuality"), enhQualityVal = $("enhQualityVal");
+const enhRunBtn = $("enhRunBtn"), enhPreviewBtn = $("enhPreviewBtn");
+const enhOCR = $("enhOCR"), enhHDR = $("enhHDR"), enhHide = $("enhHide");
 const hideAreaBtn = $("hideAreaBtn");
-const hideModal = $("hideModal");
-const hidePreview = $("hidePreview");
-const hideCanvas = $("hideCanvas");
-const hideRectElem = $("hideRect");
-const closeHide = $("closeHide");
-const saveHide = $("saveHide");
-const clearHide = $("clearHide");
 const enhStatus = $("enhStatus");
 
-const previewModal = $("previewModal");
-const beforeImg = $("beforeImg");
-const afterImg = $("afterImg");
-const previewArea = $("previewArea");
-const afterLayer = $("afterLayer");
-const handle = $("handle");
-const previewTitle = $("previewTitle");
-const previewInfo = $("previewInfo");
-const closePreview = $("closePreview");
+const beforeImg = $("beforeImg"), afterImg = $("afterImg"), previewArea = $("previewArea"), afterLayer = $("afterLayer");
+const annoCanvas = $("annoCanvas"), annoToolbar = $("annoToolbar");
+const annoButtons = document.querySelectorAll(".anno-btn");
+const annUndo = $("annUndo"), annClear = $("annClear"), annApply = $("annApply");
+const annColor = $("annColor"), annSize = $("annSize");
 
-// internal enhance canvas that holds original/enhanced pixels (image natural size)
+/* internal canvas (natural image resolution) */
 const enhanceCanvas = document.createElement("canvas");
 const enhanceCtx = enhanceCanvas.getContext("2d");
 let currentEnhFile = null;
-let hideRectSaved = null; // in image coordinates {x,y,width,height}
 
-/* drag/click upload for enhancer */
+/* annotation state */
+let annoCtx = null;
+let annoWidth = 0, annoHeight = 0;
+let annoActiveTool = null;
+let drawing = false;
+let startX = 0, startY = 0;
+let actionsStack = [];
+let redoStack = [];
+
+/* load image into internal canvas and update before/after preview */
+async function loadEnhImage(file){
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = url;
+  await img.decode().catch(()=>{});
+  enhanceCanvas.width = img.naturalWidth;
+  enhanceCanvas.height = img.naturalHeight;
+  enhanceCtx.clearRect(0,0,enhanceCanvas.width, enhanceCanvas.height);
+  enhanceCtx.drawImage(img, 0, 0);
+  if(enhFileInfo) enhFileInfo.textContent = `${file.name} — ${img.naturalWidth}×${img.naturalHeight}px`;
+  if(enhStatus) enhStatus.textContent = "Image loaded.";
+  // set preview images (before and after show same for now)
+  beforeImg.src = url;
+  afterImg.src = url;
+  // reset annotation & stacks
+  actionsStack = []; redoStack = [];
+  ensureAnnoCanvas();
+  URL.revokeObjectURL(url);
+}
+
 if(dropEnhance) dropEnhance.addEventListener("click", ()=> enhanceInput && enhanceInput.click());
 if(enhanceInput){
   enhanceInput.addEventListener("change", async e=>{
@@ -307,95 +308,66 @@ if(dropEnhance){
   });
 }
 
-async function loadEnhImage(file){
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.src = url;
-  await img.decode().catch(()=>{});
-  enhanceCanvas.width = img.naturalWidth;
-  enhanceCanvas.height = img.naturalHeight;
-  enhanceCtx.clearRect(0,0,enhanceCanvas.width,enhanceCanvas.height);
-  enhanceCtx.drawImage(img,0,0);
-  if(enhFileInfo) enhFileInfo.textContent = `${file.name} — ${img.naturalWidth}×${img.naturalHeight}px`;
-  if(enhStatus) enhStatus.textContent = "Image loaded.";
-  // update preview area images (before/after)
-  beforeImg.src = url;
-  afterImg.src = url;
-  previewInfo && (previewInfo.textContent = `${img.naturalWidth}×${img.naturalHeight}px`);
-  hideRectSaved = null;
-  URL.revokeObjectURL(url);
-}
-
 /* quality UI */
 if(enhQuality && enhQualityVal){
-  enhQuality.addEventListener("input", ()=> enhQualityVal.textContent = enchQualityValSafe(enhQuality));
-}
-function enchQualityValSafe(inp){ try{ return (parseInt(inp.value)||92) + "%"; }catch(e){ return "92%"; } }
-
-/* preview modal slider behavior */
-let draggingHandle = false;
-if(handle){
-  handle.addEventListener("mousedown", ()=> { draggingHandle=true; document.body.style.cursor='ew-resize'; });
-  document.addEventListener("mouseup", ()=> { draggingHandle=false; document.body.style.cursor=''; });
-  document.addEventListener("mousemove", e=>{
-    if(!draggingHandle) return;
-    if(!previewArea) return;
-    const rect = previewArea.getBoundingClientRect();
-    const pct = Math.min(100, Math.max(0, (e.clientX - rect.left)/rect.width * 100));
-    afterLayer.style.width = pct + "%";
-    handle.style.left = pct + "%";
+  enhQuality.addEventListener("input", ()=> {
+    enhQualityVal.textContent = (parseInt(enhQuality.value)||92) + "%";
   });
+  // init text
+  enhQualityVal.textContent = (parseInt(enhQuality.value)||92) + "%";
 }
 
-/* Preview open/close */
-on(enhPreviewBtn, "click", ()=> {
+/* Preview button (inline) */
+on(enhPreviewBtn, "click", ()=>{
   if(!enhanceCanvas.width) return alert("Upload an image first!");
-  previewModal && (previewModal.style.display = "flex");
-  // ensure preview slider initial position
-  afterLayer.style.width = "50%";
-  handle.style.left = "50%";
+  // show processed image as afterImg (no download)
+  // if filters were applied previously they are in enhanceCanvas; show current state
+  const q = enhQuality ? (parseInt(enhQuality.value)||92)/100 : 0.92;
+  const out = enhanceCanvas.toDataURL("image/jpeg", q);
+  afterImg.src = out;
+  if(enhStatus) enhStatus.textContent = "Preview updated.";
 });
-on(closePreview, "click", ()=> previewModal && (previewModal.style.display = "none"));
 
-/* enhance run -> apply selected filters and download */
+/* Apply enhancement pipeline (OCR/HDR) + merge annotations then download */
 on(enhRunBtn, "click", ()=>{
   if(!enhanceCanvas.width) return alert("Upload an image first!");
   enhStatus && (enhStatus.textContent = "Processing...");
-  // get pixels
-  let imgData = enhanceCtx.getImageData(0,0,enhanceCanvas.width, enhanceCanvas.height);
-  if(enhOCR && enhOCR.checked) imgData = applyOCRBoost(imgData);
-  if(enhHDR && enhHDR.checked) imgData = applyHDRToneMap(imgData);
-  enhanceCtx.putImageData(imgData, 0, 0);
-  if(enhHide && enhHide.checked && hideRectSaved){
-    blurRegionOnCanvas(enhanceCtx, hideRectSaved);
+  try{
+    // 1) get pixels and apply filters
+    let imgData = enhanceCtx.getImageData(0,0,enhanceCanvas.width, enhanceCanvas.height);
+    if(enhOCR && enhOCR.checked) imgData = applyOCRBoost(imgData);
+    if(enhHDR && enhHDR.checked) imgData = applyHDRToneMap(imgData);
+    enhanceCtx.putImageData(imgData, 0, 0);
+
+    // 2) merge annotation actions (including blur actions) onto the image
+    mergeAnnotationsToEnhanceCanvas();
+
+    // 3) export
+    const q = enhQuality ? (parseInt(enhQuality.value)||92)/100 : 0.92;
+    const out = enhanceCanvas.toDataURL("image/jpeg", q);
+    downloadDataURL(out, (currentEnhFile && currentEnhFile.name) ? (currentEnhFile.name.replace(/\.[^/.]+$/,"") + "_enh.jpg") : "enhanced.jpg");
+    enhStatus && (enhStatus.textContent = "Enhancement complete. File downloaded.");
+    // update inline preview
+    afterImg.src = out;
+  }catch(e){
+    console.error("Enhance run error", e);
+    enhStatus && (enhStatus.textContent = "Processing failed.");
   }
-  const q = enhQuality ? (parseInt(enhQuality.value)||92)/100 : 0.92;
-  const out = enhanceCanvas.toDataURL("image/jpeg", q);
-  downloadDataURL(out, (currentEnhFile && currentEnhFile.name) ? (currentEnhFile.name.replace(/\.[^/.]+$/,"") + "_enh.jpg") : "enhanced.jpg");
-  enhStatus && (enhStatus.textContent = "Enhancement complete. Downloaded.");
-  // update preview after download
-  afterImg.src = out;
 });
 
-/* preview button earlier opened new window; now preview modal used */
-
-/* =========================
-   Filters implementations
-============================*/
-
-/* OCR boost: light local contrast/brightness tweak aimed at text */
+/* -------------------------
+   FILTERS (OCR, HDR)
+--------------------------*/
 function applyOCRBoost(imageData){
   const d = imageData.data;
-  const len = d.length;
-  for(let i=0;i<len;i+=4){
-    // lighten midtones + slight contrast
-    let r = d[i], g = d[i+1], b = d[i+2];
+  for(let i=0;i<d.length;i+=4){
+    const r = d[i], g = d[i+1], b = d[i+2];
     const lum = (r+g+b)/3;
     const boost = lum > 128 ? 1.05 : 1.18;
     d[i] = Math.min(255, r * boost);
     d[i+1] = Math.min(255, g * boost);
     d[i+2] = Math.min(255, b * boost);
-    // small local contrast
+    // slight contrast
     d[i] = Math.min(255, (d[i] - 128) * 1.06 + 128);
     d[i+1] = Math.min(255, (d[i+1] - 128) * 1.06 + 128);
     d[i+2] = Math.min(255, (d[i+2] - 128) * 1.06 + 128);
@@ -403,7 +375,6 @@ function applyOCRBoost(imageData){
   return imageData;
 }
 
-/* HDR tone mapping: lift shadows compress highlights gently */
 function applyHDRToneMap(imageData){
   const d = imageData.data;
   for(let i=0;i<d.length;i+=4){
@@ -419,197 +390,13 @@ function toneChannel(v){
   return v;
 }
 
-/* -------------------------
-   Blur utils (multi-pass gaussian horizontal + vertical)
-   This implementation uses separable kernel approximated by small weights.
---------------------------*/
-function blurRegionOnCanvas(ctx, box){
-  if(!box) return;
-  const {x,y,width,height} = box;
-  if(width <=1 || height <=1) return;
-  try{
-    let region = ctx.getImageData(x,y,Math.max(1,Math.round(width)), Math.max(1,Math.round(height)));
-    const passes = 7; // increase for stronger blur
-    for(let p=0;p<passes;p++){
-      region = gaussianBlur(region);
-    }
-    ctx.putImageData(region, x, y);
-  }catch(e){
-    console.warn("blurRegionOnCanvas fail:", e);
-  }
-}
-
-function gaussianBlur(imgData){
-  // simple separable 5-tap kernel (horizontal then vertical)
-  const w = imgData.width, h = imgData.height;
-  const src = imgData.data;
-  const tmp = new Uint8ClampedArray(src.length);
-  const out = new Uint8ClampedArray(src.length);
-  const weights = [0.1201,0.2339,0.2920,0.2339,0.1201];
-  const half = 2;
-  // horizontal pass
-  for(let row=0; row<h; row++){
-    for(let col=0; col<w; col++){
-      let r=0,g=0,b=0,a=0;
-      for(let k=-half;k<=half;k++){
-        const x = Math.min(w-1, Math.max(0, col + k));
-        const idx = (row*w + x)*4;
-        const wt = weights[k+half];
-        r += src[idx] * wt;
-        g += src[idx+1] * wt;
-        b += src[idx+2] * wt;
-        a += src[idx+3] * wt;
-      }
-      const idxOut = (row*w + col)*4;
-      tmp[idxOut] = r; tmp[idxOut+1] = g; tmp[idxOut+2] = b; tmp[idxOut+3] = a;
-    }
-  }
-  // vertical pass
-  for(let col=0; col<w; col++){
-    for(let row=0; row<h; row++){
-      let r=0,g=0,b=0,a=0;
-      for(let k=-half;k<=half;k++){
-        const y = Math.min(h-1, Math.max(0, row + k));
-        const idx = (y*w + col)*4;
-        const wt = weights[k+half];
-        r += tmp[idx] * wt;
-        g += tmp[idx+1] * wt;
-        b += tmp[idx+2] * wt;
-        a += tmp[idx+3] * wt;
-      }
-      const idxOut = (row*w + col)*4;
-      out[idxOut] = r; out[idxOut+1] = g; out[idxOut+2] = b; out[idxOut+3] = a;
-    }
-  }
-  // write back
-  imgData.data.set(out);
-  return imgData;
-}
-
-/* download helper */
-function downloadDataURL(dataURL, filename="image.jpg"){
-  const a = document.createElement("a");
-  a.href = dataURL;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-/* ===========================
-   OBJECT HIDE (hide modal interactions)
-   We keep hideRectSaved in image pixel coordinates
-============================*/
-let draggingHide = false;
-let startHX=0,startHY=0;
-
-if(hideAreaBtn){
-  hideAreaBtn.addEventListener("click", ()=>{
-    if(!enhanceCanvas.width) return alert("Upload an image first!");
-    hideModal && (hideModal.style.display = "flex");
-    // show preview
-    hidePreview && (hidePreview.src = enhanceCanvas.toDataURL("image/jpeg", 0.9));
-    // reset rect element visibility
-    if(hideRectElem) hideRectElem.style.display = hideRectSaved ? "block" : "none";
-  });
-}
-
-if(hideCanvas){
-  // we want coordinates relative to displayed hidePreview image, then map to image coords
-  hideCanvas.addEventListener("mousedown", e=>{
-    if(!(enhHide && enhHide.checked)) return;
-    draggingHide = true;
-    const rect = hideCanvas.getBoundingClientRect();
-    startHX = e.clientX - rect.left;
-    startHY = e.clientY - rect.top;
-    if(hideRectElem){
-      hideRectElem.style.display = "block";
-      hideRectElem.style.left = startHX + "px";
-      hideRectElem.style.top = startHY + "px";
-      hideRectElem.style.width = "0px";
-      hideRectElem.style.height = "0px";
-    }
-    hideRectSaved = { x: startHX, y: startHY, width: 0, height: 0 }; // stored as display coords until Save
-  });
-  hideCanvas.addEventListener("mousemove", e=>{
-    if(!draggingHide) return;
-    const rect = hideCanvas.getBoundingClientRect();
-    const cx = e.clientX - rect.left;
-    const cy = e.clientY - rect.top;
-    const w = cx - startHX;
-    const h = cy - startHY;
-    if(hideRectElem){
-      hideRectElem.style.left = (w>=0 ? startHX : cx) + "px";
-      hideRectElem.style.top = (h>=0 ? startHY : cy) + "px";
-      hideRectElem.style.width = Math.abs(w) + "px";
-      hideRectElem.style.height = Math.abs(h) + "px";
-    }
-    hideRectSaved = { x: (w>=0 ? startHX : cx), y: (h>=0 ? startHY : cy), width: Math.abs(w), height: Math.abs(h) };
-  });
-  document.addEventListener("mouseup", ()=> { draggingHide = false; });
-}
-
-on(closeHide, "click", ()=> hideModal && (hideModal.style.display="none"));
-on(saveHide, "click", ()=>{
-  // map display coords to image pixel coords (hidePreview displayed in contain mode)
-  if(!hideRectSaved || !hidePreview || !enhanceCanvas.width) { hideModal && (hideModal.style.display="none"); return; }
-
-  // compute image display rect inside hideCanvas
-  const dispRect = hidePreview.getBoundingClientRect();
-  const canvasRect = hideCanvas.getBoundingClientRect();
-  // ratio of image natural to displayed
-  const naturalW = enhanceCanvas.width, naturalH = enhanceCanvas.height;
-  const dispW = dispRect.width, dispH = dispRect.height;
-  const offsetX = dispRect.left - canvasRect.left;
-  const offsetY = dispRect.top - canvasRect.top;
-
-  // convert hideRectSaved (display coords) -> image pixel coords
-  const sx = Math.max(0, hideRectSaved.x - offsetX);
-  const sy = Math.max(0, hideRectSaved.y - offsetY);
-  const sw = Math.min(dispW, hideRectSaved.width);
-  const sh = Math.min(dispH, hideRectSaved.height);
-  const xImg = Math.round((sx / dispW) * naturalW);
-  const yImg = Math.round((sy / dispH) * naturalH);
-  const wImg = Math.round((sw / dispW) * naturalW);
-  const hImg = Math.round((sh / dispH) * naturalH);
-
-  hideRectSaved = { x: xImg, y: yImg, width: wImg, height: hImg };
-  hideModal && (hideModal.style.display="none");
-  enhStatus && (enhStatus.textContent = "Hide area saved. Will be applied on Enhance.");
-});
-on(clearHide, "click", ()=>{
-  hideRectSaved = null;
-  if(hideRectElem) hideRectElem.style.display = "none";
-  enhStatus && (enhStatus.textContent = "Hide area cleared.");
-});
-
-
-/* ===========================
-   ANNOTATION TOOL — canvas overlay on previewArea
-   - freehand drawing for rect/arrow/text/highlight/blur
-   - we draw on an annotation canvas sized to displayed preview area (CSS pixels)
-   - apply merges annotations to enhanceCanvas by scaling
-============================*/
-const annoCanvas = $("annoCanvas");
-const annoToolbar = $("annoToolbar");
-const annoButtons = document.querySelectorAll(".anno-btn");
-const annUndo = $("annUndo");
-const annClear = $("annClear");
-const annApply = $("annApply");
-const annColor = $("annColor");
-const annSize = $("annSize");
-
-let annoCtx = null;
-let annoWidth = 0, annoHeight = 0;
-let annoActiveTool = null;
-let drawing = false;
-let startX=0, startY=0;
-let actionsStack = []; // store drawn shapes to support undo
-let redoStack = [];
-
+/* ============================
+   Annotation system
+   - draw shapes on annoCanvas (display coords)
+   - actionsStack stores shapes to apply/merge later
+=============================*/
 function ensureAnnoCanvas(){
   if(!annoCanvas || !previewArea) return false;
-  // set canvas pixel size to previewArea size (accounting for devicePixelRatio)
   const rect = previewArea.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
   const w = Math.max(10, Math.floor(rect.width));
@@ -618,12 +405,11 @@ function ensureAnnoCanvas(){
   annoCanvas.style.height = h + "px";
   annoCanvas.width = Math.floor(w * ratio);
   annoCanvas.height = Math.floor(h * ratio);
+  annoCanvas.getContext("2d").setTransform(ratio,0,0,ratio,0,0);
   annoCtx = annoCanvas.getContext("2d");
-  annoCtx.scale(ratio, ratio);
   annoWidth = w; annoHeight = h;
-  // make sure pointer events allowed to draw
   annoCanvas.style.pointerEvents = "auto";
-  clearAnno();
+  redrawAll();
   return true;
 }
 
@@ -637,34 +423,26 @@ function clearAnno(){
 function redrawAll(){
   if(!annoCtx) return;
   annoCtx.clearRect(0,0,annoWidth,annoHeight);
-  for(const a of actionsStack) {
-    drawAction(annoCtx, a, false);
-  }
+  for(const a of actionsStack) drawAction(annoCtx, a);
 }
 
-function drawAction(ctx, action, previewOnly){
-  // action: { tool, x, y, x2, y2, color, size, text }
+function drawAction(ctx, action){
   ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
   ctx.strokeStyle = action.color || "#ff7a3c";
   ctx.fillStyle = action.color || "#ff7a3c";
   ctx.lineWidth = Math.max(1, action.size || 4);
+
   if(action.tool === "rect"){
-    ctx.globalAlpha = 1;
-    ctx.beginPath();
     ctx.setLineDash([6,6]);
     ctx.strokeRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
     ctx.setLineDash([]);
-    ctx.fillStyle = "rgba(255,122,60,0.12)";
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = action.color || "#ff7a3c";
     ctx.fillRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
+    ctx.globalAlpha = 1;
   } else if(action.tool === "arrow"){
-    // line + arrow head
-    ctx.beginPath();
-    ctx.moveTo(action.x, action.y);
-    ctx.lineTo(action.x2, action.y2);
-    ctx.stroke();
-    // arrow head
+    ctx.beginPath(); ctx.moveTo(action.x, action.y); ctx.lineTo(action.x2, action.y2); ctx.stroke();
     const ang = Math.atan2(action.y2 - action.y, action.x2 - action.x);
     const headlen = Math.max(8, ctx.lineWidth * 2.2);
     ctx.beginPath();
@@ -681,79 +459,138 @@ function drawAction(ctx, action, previewOnly){
     ctx.globalAlpha = 0.25;
     ctx.fillStyle = action.color || "#ff7a3c";
     ctx.fillRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
+    ctx.globalAlpha = 1;
   } else if(action.tool === "blur"){
-    // draw semi-opaque rectangle as visual cue (actual blur applied on merge)
+    // visual indicator; actual blur happens on merge
     ctx.globalAlpha = 0.6;
     ctx.fillStyle = "rgba(0,0,0,0.45)";
     ctx.fillRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
-    // store action for later actual blur merging
+    ctx.globalAlpha = 1;
   } else if(action.tool === "free"){
-    // stroke path recorded as points
-    ctx.beginPath();
     const pts = action.points || [];
     if(pts.length){
+      ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
-      for(let i=1;i<pts.length;i++){
-        ctx.lineTo(pts[i].x, pts[i].y);
-      }
+      for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
       ctx.stroke();
     }
   }
   ctx.restore();
 }
 
-/* annotate toolbar events */
+/* toolbar buttons */
 annoButtons.forEach(b=>{
   b.addEventListener("click", ()=>{
-    // toggle active state
     annoButtons.forEach(x=>x.classList.remove("active"));
     b.classList.add("active");
     annoActiveTool = b.dataset.tool;
-    // show toolbar panel
     if(annoToolbar) annoToolbar.style.display = "flex";
-    // ensure annotation canvas size
     ensureAnnoCanvas();
   });
 });
 
-if(annClear) annClear.addEventListener("click", ()=> { clearAnno(); });
+/* undo/clear/apply */
+if(annClear) annClear.addEventListener("click", ()=> { clearAnno(); redrawAll(); });
 if(annUndo) annUndo.addEventListener("click", ()=> {
-  if(actionsStack.length) {
-    redoStack.push(actionsStack.pop());
-    redrawAll();
-  }
+  if(actionsStack.length) { redoStack.push(actionsStack.pop()); redrawAll(); }
 });
-if(annApply) annApply.addEventListener("click", ()=>{
-  // merge annotations to enhanceCanvas (image pixel coords)
-  if(!enhanceCanvas.width || !annoCanvas) return alert("Nothing to apply.");
-  // create a temp canvas sized to image natural size
+if(annApply) annApply.addEventListener("click", () => {
+  if(!enhanceCanvas.width) return alert("No image to apply annotations to.");
+  mergeAnnotationsToEnhanceCanvas();
+  // update preview
+  const q = enhQuality ? (parseInt(enhQuality.value)||92)/100 : 0.92;
+  const out = enhanceCanvas.toDataURL("image/jpeg", q);
+  afterImg.src = out;
+  if(enhStatus) enhStatus.textContent = "Annotations applied to image.";
+  // clear overlays
+  clearAnno();
+  redrawAll();
+});
+
+/* annotation drawing events */
+if(annoCanvas){
+  // mousedown
+  annoCanvas.addEventListener("mousedown", e=>{
+    if(!annoActiveTool) return;
+    drawing = true;
+    const r = annoCanvas.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    startX = x; startY = y;
+
+    if(annoActiveTool === "free"){
+      const action = { tool:"free", color: annColor ? annColor.value : "#ff7a3c", size: annSize ? parseInt(annSize.value||4) : 4, points:[{x,y}] };
+      actionsStack.push(action);
+    } else if(annoActiveTool === "text"){
+      const txt = prompt("Enter text to add:");
+      if(!txt) { drawing = false; return; }
+      const action = { tool:"text", x, y, color: annColor ? annColor.value : "#ff7a3c", size: annSize ? parseInt(annSize.value||14) : 14, text: txt };
+      actionsStack.push(action);
+      redrawAll();
+      drawing = false;
+    } else {
+      const action = { tool: annoActiveTool, x, y, x2: x, y2: y, color: annColor ? annColor.value : "#ff7a3c", size: annSize ? parseInt(annSize.value||4) : 4 };
+      actionsStack.push(action);
+    }
+  });
+
+  // mousemove
+  annoCanvas.addEventListener("mousemove", e=>{
+    if(!drawing) return;
+    const r = annoCanvas.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    const cur = actionsStack[actionsStack.length - 1];
+    if(!cur) return;
+    if(cur.tool === "free"){
+      cur.points.push({x,y});
+    } else {
+      cur.x2 = x; cur.y2 = y;
+    }
+    redrawAll();
+  });
+
+  // mouseup
+  document.addEventListener("mouseup", ()=> {
+    if(drawing) {
+      drawing = false;
+      redrawAll();
+    }
+  });
+}
+
+/* ======================
+   Merge annotations into enhanceCanvas
+   - scale display coords => image natural coords
+   - applies blur actions as multi-pass gaussian on image pixel region
+   ========================*/
+function mergeAnnotationsToEnhanceCanvas(){
+  if(!enhanceCanvas.width || !previewArea) return;
+  // create tmp canvas at image resolution
   const tmp = document.createElement("canvas");
-  tmp.width = enhanceCanvas.width;
-  tmp.height = enhanceCanvas.height;
+  tmp.width = enhanceCanvas.width; tmp.height = enhanceCanvas.height;
   const tctx = tmp.getContext("2d");
   // draw current image
   tctx.drawImage(enhanceCanvas, 0, 0);
-  // draw each action by scaling annotation coordinates to image coords
+
+  // compute display rect
   const dispRect = previewArea.getBoundingClientRect();
   const dispW = dispRect.width, dispH = dispRect.height;
+  const scaleX = enhanceCanvas.width / Math.max(1, dispW);
+  const scaleY = enhanceCanvas.height / Math.max(1, dispH);
+
   for(const a of actionsStack){
-    // compute scaled action
-    const scaleX = enhanceCanvas.width / dispW;
-    const scaleY = enhanceCanvas.height / dispH;
     if(a.tool === "text"){
-      // text: draw with simple settings
       tctx.fillStyle = a.color || "#ff7a3c";
       tctx.font = `${Math.max(12, a.size*3) * scaleX}px Inter, sans-serif`;
-      tctx.fillText(a.text || "", a.x*scaleX, a.y*scaleY);
+      tctx.fillText(a.text || "", a.x * scaleX, a.y * scaleY);
     } else if(a.tool === "rect" || a.tool === "highlight"){
-      const sx = Math.round(a.x * scaleX);
-      const sy = Math.round(a.y * scaleY);
-      const sw = Math.round((a.x2 - a.x) * scaleX);
-      const sh = Math.round((a.y2 - a.y) * scaleY);
+      const sx = Math.round(Math.min(a.x,a.x2) * scaleX);
+      const sy = Math.round(Math.min(a.y,a.y2) * scaleY);
+      const sw = Math.round(Math.abs(a.x2 - a.x) * scaleX);
+      const sh = Math.round(Math.abs(a.y2 - a.y) * scaleY);
       if(a.tool === "rect"){
         tctx.strokeStyle = a.color || "#ff7a3c";
-        tctx.lineWidth = Math.max(2, a.size || 4) * scaleX;
-        tctx.setLineDash([6*scaleX,6*scaleX]);
+        tctx.lineWidth = Math.max(2, a.size || 4) * Math.max(scaleX, scaleY);
+        tctx.setLineDash([6 * scaleX, 6 * scaleX]);
         tctx.strokeRect(sx, sy, sw, sh);
         tctx.setLineDash([]);
         tctx.fillStyle = "rgba(255,122,60,0.12)";
@@ -767,8 +604,8 @@ if(annApply) annApply.addEventListener("click", ()=>{
     } else if(a.tool === "arrow"){
       tctx.strokeStyle = a.color || "#ff7a3c";
       tctx.lineWidth = Math.max(2, a.size || 4) * Math.max(scaleX, scaleY);
-      const x1 = a.x*scaleX, y1 = a.y*scaleY, x2 = a.x2*scaleX, y2 = a.y2*scaleY;
-      tctx.beginPath(); tctx.moveTo(x1,y1); tctx.lineTo(x2,y2); tctx.stroke();
+      const x1 = a.x * scaleX, y1 = a.y * scaleY, x2 = a.x2 * scaleX, y2 = a.y2 * scaleY;
+      tctx.beginPath(); tctx.moveTo(x1, y1); tctx.lineTo(x2, y2); tctx.stroke();
       const ang = Math.atan2(y2 - y1, x2 - x1);
       const head = Math.max(8, tctx.lineWidth * 2.2);
       tctx.beginPath();
@@ -779,116 +616,112 @@ if(annApply) annApply.addEventListener("click", ()=>{
       tctx.fillStyle = a.color || "#ff7a3c";
       tctx.fill();
     } else if(a.tool === "blur"){
-      // apply blur area on tmp canvas (image pixel coords)
-      const sx = Math.round(a.x * scaleX);
-      const sy = Math.round(a.y * scaleY);
-      const sw = Math.max(1, Math.round((a.x2 - a.x) * scaleX));
-      const sh = Math.max(1, Math.round((a.y2 - a.y) * scaleY));
+      // apply blur on region
+      const sx = Math.round(Math.min(a.x,a.x2) * scaleX);
+      const sy = Math.round(Math.min(a.y,a.y2) * scaleY);
+      const sw = Math.max(1, Math.round(Math.abs(a.x2 - a.x) * scaleX));
+      const sh = Math.max(1, Math.round(Math.abs(a.y2 - a.y) * scaleY));
       try{
         let region = tctx.getImageData(sx, sy, sw, sh);
-        // multi-pass gaussian blur
+        // multi-pass gaussian
         const passes = 7;
         for(let p=0;p<passes;p++) region = gaussianBlur(region);
         tctx.putImageData(region, sx, sy);
-      }catch(e){ console.warn("apply blur action fail", e); }
+      }catch(e){
+        console.warn("blur region failed", e);
+      }
     } else if(a.tool === "free"){
-      // draw freehand strokes scaled
       tctx.strokeStyle = a.color || "#ff7a3c";
-      tctx.lineWidth = Math.max(1, a.size || 4) * Math.max(scaleX,scaleY);
+      tctx.lineWidth = Math.max(1, a.size || 4) * Math.max(scaleX, scaleY);
       tctx.beginPath();
       const pts = a.points || [];
       if(pts.length){
-        tctx.moveTo(pts[0].x*scaleX, pts[0].y*scaleY);
-        for(let i=1;i<pts.length;i++){
-          tctx.lineTo(pts[i].x*scaleX, pts[i].y*scaleY);
-        }
+        tctx.moveTo(pts[0].x * scaleX, pts[0].y * scaleY);
+        for(let i=1;i<pts.length;i++) tctx.lineTo(pts[i].x * scaleX, pts[i].y * scaleY);
         tctx.stroke();
       }
     }
   }
+
   // copy tmp back to enhanceCanvas
   enhanceCtx.clearRect(0,0,enhanceCanvas.width, enhanceCanvas.height);
   enhanceCtx.drawImage(tmp, 0, 0);
-  // update preview image
-  const out = enhanceCanvas.toDataURL("image/jpeg", 0.92);
-  afterImg.src = out;
-  enhStatus && (enhStatus.textContent = "Annotations applied to image.");
-  // clear annotation overlay
-  clearAnno();
-});
-
-/* annotation canvas mouse handling (drawing shapes) */
-if(annoCanvas){
-  annoCanvas.addEventListener("mousedown", e=>{
-    if(!annoActiveTool) return;
-    drawing = true;
-    const r = annoCanvas.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    startX = x; startY = y;
-    if(annoActiveTool === "free"){
-      // create freehand action
-      const action = { tool:"free", color: annColor ? annColor.value : "#ff7a3c", size: annSize ? parseInt(annSize.value||4) : 4, points:[{x,y}]};
-      actionsStack.push(action);
-    } else if(annoActiveTool === "text"){
-      const txt = prompt("Enter text to add:");
-      if(!txt) { drawing=false; return; }
-      const action = { tool:"text", x, y, color: annColor ? annColor.value : "#ff7a3c", size: annSize ? parseInt(annSize.value||14) : 14, text: txt };
-      actionsStack.push(action);
-      redrawAll();
-      drawing=false;
-    } else {
-      // push a placeholder action so we can update x2,y2 on mousemove
-      const action = { tool: annoActiveTool, x, y, x2: x, y2: y, color: annColor ? annColor.value : "#ff7a3c", size: annSize ? parseInt(annSize.value||4) : 4 };
-      actionsStack.push(action);
-    }
-  });
-
-  annoCanvas.addEventListener("mousemove", e=>{
-    if(!drawing) return;
-    const r = annoCanvas.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    const current = actionsStack[actionsStack.length -1];
-    if(!current) return;
-    if(current.tool === "free"){
-      current.points.push({x,y});
-    } else {
-      current.x2 = x; current.y2 = y;
-    }
-    redrawAll();
-  });
-
-  annoCanvas.addEventListener("mouseup", e=>{
-    if(drawing) {
-      drawing = false;
-      // finalize shape
-      // if rectangle/arrow with negative width/height keep as is; drawAction will handle
-      redrawAll();
-    }
-  });
 }
 
-/* Undo/clear events are above (annUndo/annClear) */
-
-/* ===========================
-   Small UX init
-============================*/
-ensureAnnoCanvas();
-showSection(isAuthed() ? "home" : "home");
-document.addEventListener("keydown", e=>{
-  if(e.key === "Escape"){
-    // close any modal
-    [previewModal, hideModal, themeModal, $("aboutModal")].forEach(m=>{ if(m) m.style.display = "none"; });
+/* gaussian blur (separable 5-tap) */
+function gaussianBlur(imgData){
+  const w = imgData.width, h = imgData.height;
+  const src = imgData.data;
+  const tmp = new Uint8ClampedArray(src.length);
+  const out = new Uint8ClampedArray(src.length);
+  const weights = [0.1201,0.2339,0.2920,0.2339,0.1201];
+  const half = 2;
+  // horizontal pass
+  for(let row=0; row<h; row++){
+    for(let col=0; col<w; col++){
+      let r=0,g=0,b=0,a=0;
+      for(let k=-half; k<=half; k++){
+        const x = Math.min(w-1, Math.max(0, col + k));
+        const idx = (row*w + x)*4;
+        const wt = weights[k+half];
+        r += src[idx] * wt; g += src[idx+1] * wt; b += src[idx+2] * wt; a += src[idx+3] * wt;
+      }
+      const idxOut = (row*w + col)*4;
+      tmp[idxOut] = r; tmp[idxOut+1] = g; tmp[idxOut+2] = b; tmp[idxOut+3] = a;
+    }
   }
-});
+  // vertical pass
+  for(let col=0; col<w; col++){
+    for(let row=0; row<h; row++){
+      let r=0,g=0,b=0,a=0;
+      for(let k=-half; k<=half; k++){
+        const y = Math.min(h-1, Math.max(0, row + k));
+        const idx = (y*w + col)*4;
+        const wt = weights[k+half];
+        r += tmp[idx] * wt; g += tmp[idx+1] * wt; b += tmp[idx+2] * wt; a += tmp[idx+3] * wt;
+      }
+      const idxOut = (row*w + col)*4;
+      out[idxOut] = r; out[idxOut+1] = g; out[idxOut+2] = b; out[idxOut+3] = a;
+    }
+  }
+  imgData.data.set(out);
+  return imgData;
+}
 
-/* prevent clicks on preview images (they are background) */
+/* download helper */
+function downloadDataURL(dataURL, filename="image.jpg"){
+  const a = document.createElement("a");
+  a.href = dataURL;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+/* small init & resize handlers */
+window.addEventListener("resize", ()=> {
+  ensureAnnoCanvas();
+});
+ensureAnnoCanvas();
+
+/* keep preview images non-interactive */
 if(beforeImg) beforeImg.style.pointerEvents = "none";
 if(afterImg) afterImg.style.pointerEvents = "none";
 
-/* Safety - prevent uncaught errors from freezing UI */
-window.addEventListener("error", (ev)=>{
-  console.error("Runtime error:", ev.error || ev.message);
-  // keep UI visible
+/* keyboard escape to close modals */
+document.addEventListener("keydown", (e)=>{
+  if(e.key === "Escape"){
+    ["aboutModal","themeModal"].forEach(id=>{
+      const m = $(id);
+      if(m) m.style.display = "none";
+    });
+  }
 });
 
-/* End of script_v.js */
+/* global error catch so UI doesn't freeze on script errors */
+window.addEventListener("error", ev=>{
+  console.error("Runtime error:", ev.error || ev.message);
+});
+
+/* final default view */
+showSection(isAuthed() ? "home" : "home");
