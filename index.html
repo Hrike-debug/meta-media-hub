@@ -52,6 +52,27 @@
       </div>
     </section>
 
+    <!-- ABOUT SECTION -->
+    <section class="about">
+      <h3>About Meta Media Hub</h3>
+      <p>
+        This internal tool was created by the META E-Learning Team to speed up media workflows,
+        improve asset quality and reduce repetitive manual work. All processing happens locally
+        inside your browser — files are never uploaded to any server.
+      </p>
+
+      <ul class="about-list">
+        <li>Batch resize with smart human detection</li>
+        <li>AI-style enhancement & quality optimization</li>
+        <li>Manual focus cropping for critical visuals</li>
+        <li>Offline processing — safe for confidential content</li>
+      </ul>
+
+      <p class="about-foot">
+        Version 1.5 • Designed and developed by <strong>Mukesh Yadav</strong>
+      </p>
+    </section>
+
     <!-- IMAGE RESIZER SECTION -->
     <section id="imageSection" class="section" style="display:none">
 
@@ -84,7 +105,10 @@
         </div>
 
         <div class="controls">
-          <label>Quality</label>
+          <div class="mini-control">
+            <label>Quality</label>
+            <div class="help-tip" data-tip="Higher quality = better clarity but heavier file size. 90% works well for most LMS assets.">?</div>
+          </div>
           <input id="imgQuality" type="range" min="60" max="100" value="90">
           <span id="imgQualityVal">90%</span>
 
@@ -132,7 +156,7 @@
           <div id="enhFileInfo" class="file-list small-file">No image selected.</div>
 
           <p class="small-muted">
-            Recommended: high-res portraits, learning assets, thumbnails, etc.
+            Ideal for portraits, key visuals, LMS screenshots, thumbnails and hero images.
           </p>
         </div>
 
@@ -140,24 +164,29 @@
           <h3 class="panel-title">Enhancement Options</h3>
           <div class="ai-panel">
             <div class="ai-panel-header">
-              <span class="label">Smart Enhancements (all run locally)</span>
+              <span class="label">Smart Enhancements (processed locally)</span>
+              <div class="help-tip" data-tip="These processors work directly in your browser using Canvas. No upload, no server, safe for internal projects.">?</div>
             </div>
             <div class="ai-options">
               <label class="ai-option">
                 <input type="checkbox" id="enhUpscale2x">
                 <span>Upscale ×2</span>
+                <div class="help-tip" data-tip="Enlarges the image to 2× size. Good for slightly low-res images that need more detail.">?</div>
               </label>
               <label class="ai-option">
                 <input type="checkbox" id="enhUpscale4x">
                 <span>Upscale ×4</span>
+                <div class="help-tip" data-tip="Massive 4× enlargement. Use for assets you may crop or use in larger layouts. Heavier output.">?</div>
               </label>
               <label class="ai-option">
                 <input type="checkbox" id="enhFaceEnhance">
                 <span>Boost Faces & Detail</span>
+                <div class="help-tip" data-tip="Enhances edges and fine details—especially useful for faces, text and UI elements.">?</div>
               </label>
               <label class="ai-option">
                 <input type="checkbox" id="enhDenoise">
                 <span>Denoise & Sharpen</span>
+                <div class="help-tip" data-tip="Reduces grain and applies gentle sharpening. Good for noisy screenshots or compressed JPEGs.">?</div>
               </label>
             </div>
             <p class="ai-note">
@@ -169,6 +198,7 @@
           <div class="two-input">
             <div class="mini-control">
               <label class="small-label">Output Quality</label>
+              <div class="help-tip" data-tip="Controls JPEG export quality. 92% is a sweet spot between clarity and file size.">?</div>
               <input id="enhQuality" type="range" min="70" max="100" value="92">
               <span id="enhQualityVal" class="mini-val">92%</span>
             </div>
@@ -185,7 +215,7 @@
       </div>
     </section>
 
-    <!-- PREVIEW MODAL (used by resizer & enhancer) -->
+    <!-- PREVIEW MODAL (shared) -->
     <div id="previewModal" class="modal">
       <div class="modal-panel large">
         <div class="modal-head">
@@ -235,6 +265,6 @@
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
   <!-- MAIN SCRIPT -->
-  <script src="script.js"></script>
+  <script src="script_v.js"></script>
 </body>
 </html>
