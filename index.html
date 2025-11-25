@@ -151,40 +151,39 @@
             <div class="ai-options">
               <label class="ai-option">
                 <input type="checkbox" id="enhUpscale2x">
-                <span>Upscale ×2</span>
-                <div class="help-tip" data-tip="Enlarges the image to 2× size. Good for slightly low-res images that need more detail.">?</div>
+                <span>Upscale ×2 (Super Resolution-lite)</span>
+                <div class="help-tip" data-tip="Enlarges the image 2× with high-quality smoothing + edge boost. Good for slightly low-res images.">?</div>
               </label>
               <label class="ai-option">
                 <input type="checkbox" id="enhUpscale4x">
-                <span>Upscale ×4</span>
-                <div class="help-tip" data-tip="Massive 4× enlargement. Use for assets you may crop or use in larger layouts. Heavier output.">?</div>
+                <span>Upscale ×4 (Deep Detail)</span>
+                <div class="help-tip" data-tip="Massive enlargement with extra sharpening. Best for hero shots / thumbnails. Heavier processing.">?</div>
               </label>
               <label class="ai-option">
                 <input type="checkbox" id="enhFaceEnhance">
                 <span>Boost Faces & Detail</span>
-                <div class="help-tip" data-tip="Enhances edges and fine details—especially useful for faces, text and UI elements.">?</div>
+                <div class="help-tip" data-tip="Unsharp mask style enhancement — sharpens edges and facial details without overdoing it.">?</div>
               </label>
               <label class="ai-option">
                 <input type="checkbox" id="enhDenoise">
-                <span>Denoise & Sharpen</span>
-                <div class="help-tip" data-tip="Reduces grain and applies gentle sharpening. Good for noisy screenshots or compressed JPEGs.">?</div>
+                <span>Denoise & Smooth</span>
+                <div class="help-tip" data-tip="Softens grain / compression noise before sharpening, especially for low-quality JPEGs.">?</div>
               </label>
 
-              <!-- NEW: OCR / HDR / HIDE -->
               <label class="ai-option">
                 <input type="checkbox" id="enhOCR">
                 <span>Text / OCR Clarity</span>
-                <div class="help-tip" data-tip="Enhances edges & contrast in UI screenshots and documents so small text stays crisp.">?</div>
+                <div class="help-tip" data-tip="Makes UI / text screenshots crisper by boosting local contrast.">?</div>
               </label>
               <label class="ai-option">
                 <input type="checkbox" id="enhHDR">
                 <span>HDR Boost (Shadows & Highlights)</span>
-                <div class="help-tip" data-tip="Lifts dark areas and tames strong highlights to make faces & details more visible.">?</div>
+                <div class="help-tip" data-tip="Lifts shadows and gently compresses highlights so faces & UI are easier to read.">?</div>
               </label>
               <label class="ai-option">
                 <input type="checkbox" id="enhHide">
                 <span>Object Hide / Privacy Blur</span>
-                <div class="help-tip" data-tip="Blur a selected rectangle (face, ID, logo) without affecting the rest of the image.">?</div>
+                <div class="help-tip" data-tip="Blur a selected rectangle (face, ID, logo) without touching the rest of the image.">?</div>
               </label>
             </div>
 
@@ -208,12 +207,31 @@
           </div>
 
           <div class="btn-row">
-            <button id="enhPreviewBtn" class="btn ghost">Preview</button>
+            <button id="enhPreviewBtn" class="btn ghost">Preview (Before / After)</button>
             <button id="enhRunBtn" class="btn primary">Enhance & Download</button>
           </div>
 
           <div class="progress"><div id="enhProgress" class="bar"></div></div>
           <p id="enhStatus" class="status-text">Waiting for image.</p>
+
+          <!-- ANNOTATION AREA -->
+          <div class="annot-wrap">
+            <div class="annot-toolbar">
+              <span class="annot-label">Annotate Output</span>
+              <button id="toolRect"  class="annot-btn active" title="Rectangle highlight">▢</button>
+              <button id="toolArrow" class="annot-btn" title="Arrow">➤</button>
+              <button id="toolText"  class="annot-btn" title="Text label">T</button>
+              <button id="annotClear" class="annot-btn" title="Clear annotations">✕</button>
+              <button id="annotApply" class="btn primary annot-apply">Apply to Image</button>
+            </div>
+            <div class="annot-area">
+              <canvas id="annotCanvas"></canvas>
+              <div class="annot-empty" id="annotEmptyMsg">Run Enhance once to load image for annotation.</div>
+            </div>
+            <p class="small-muted">
+              Annotations are applied on top of the enhanced version and included in the final download (rectangles, arrows, labels).
+            </p>
+          </div>
         </div>
       </div>
     </section>
@@ -237,7 +255,7 @@
       </div>
     </div>
 
-    <!-- MANUAL FOCUS MODAL -->
+    <!-- MANUAL FOCUS MODAL (resizer) -->
     <div id="focusModal" class="modal">
       <div class="modal-panel large">
         <div class="modal-head">
@@ -321,7 +339,7 @@
         </div>
 
         <div class="about-footer-row">
-          <span class="about-meta">v1.6 • Designed & built by <strong>Mukesh Yadav</strong></span>
+          <span class="about-meta">v1.7 • Designed & built by <strong>Mukesh Yadav</strong></span>
           <span class="about-meta">Contact: META E-learning / Media team</span>
         </div>
       </div>
