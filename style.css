@@ -130,3 +130,17 @@ input[type="file"]{ display:none; }
 /* responsive */
 @media (max-width:880px){ .enhancer-layout{ grid-template-columns:1fr; } }
 @media (max-width:760px){ .home-section{ flex-direction:column; } .two-input{ flex-direction:column; } .about-grid{ grid-template-columns:1fr; } }
+/* Annotator modal specific */
+#annotatorModal .modal-panel { padding:18px; }
+#annotCanvasWrap img { background: #000; display:block; }
+.annot-btn { padding:8px 10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:transparent; cursor:pointer; color:var(--text); }
+.annot-btn.active { background:var(--accent); color:#100; border-color:transparent; }
+
+/* mini toolbar */
+#annoToolbarMini { border:1px solid rgba(255,255,255,0.04); padding:8px; border-radius:12px; background:linear-gradient(180deg, rgba(0,0,0,0.03), transparent); }
+
+/* make help-tip tooltips consistent */
+.help-tip { display:inline-flex; width:18px; height:18px; background:var(--accent); color:#1c0702; border-radius:50%; justify-content:center; align-items:center; font-size:13px; cursor:pointer; margin-left:6px; font-weight:700; box-shadow:0 4px 10px rgba(0,0,0,0.7); }
+
+/* make sure canvases match container on resize */
+#annotCanvas, #annoCanvas { width:100%; height:100%; }
