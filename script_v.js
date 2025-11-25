@@ -156,16 +156,16 @@ imageInput.addEventListener("change", async e => {
 
 dropImage.addEventListener("dragover", e => {
   e.preventDefault();
-  dropImage.style.background = "rgba(255,255,255,0.04)";
+  dropImage.style.background = "rgba(255,255,255,0.06)";
 });
 
 dropImage.addEventListener("dragleave", () => {
-  dropImage.style.background = "transparent";
+  dropImage.style.background = "rgba(255,255,255,0.03)";
 });
 
 dropImage.addEventListener("drop", async e => {
   e.preventDefault();
-  dropImage.style.background = "transparent";
+  dropImage.style.background = "rgba(255,255,255,0.03)";
   imageFiles = Array.from(e.dataTransfer.files);
   await handleNewImages();
 });
@@ -329,7 +329,7 @@ function computeCrop(imgW, imgH, tw, th, personBox, manual) {
   return { sx, sy, sW, sH };
 }
 
-/* crop -> blob (no AI in resizer) */
+/* crop -> blob */
 
 function cropToBlob(imgEl, tw, th, crop, quality) {
   const canvas = document.createElement("canvas");
@@ -704,14 +704,14 @@ enhanceInput.addEventListener("change", e => {
 
 dropEnhance.addEventListener("dragover", e => {
   e.preventDefault();
-  dropEnhance.style.background = "rgba(255,255,255,0.04)";
+  dropEnhance.style.background = "rgba(255,255,255,0.06)";
 });
 dropEnhance.addEventListener("dragleave", () => {
-  dropEnhance.style.background = "transparent";
+  dropEnhance.style.background = "rgba(255,255,255,0.03)";
 });
 dropEnhance.addEventListener("drop", e => {
   e.preventDefault();
-  dropEnhance.style.background = "transparent";
+  dropEnhance.style.background = "rgba(255,255,255,0.03)";
   handleEnhanceFile(e.dataTransfer.files);
 });
 
@@ -736,7 +736,7 @@ function getEnhSettings() {
   return any ? s : null;
 }
 
-/* AI enhancement pipeline helpers */
+/* Enhancement pipeline helpers */
 
 function applyEnhancementsToCanvas(canvas, ctx, aiSettings) {
   const w = canvas.width;
@@ -746,9 +746,9 @@ function applyEnhancementsToCanvas(canvas, ctx, aiSettings) {
 
   const clamp = v => v < 0 ? 0 : (v > 255 ? 255 : v);
 
-  // base small contrast/brightness tweak
-  const contrast = 1.05;
-  const brightness = 3;
+  // base small contrast/brightness tweak (warm)
+  const contrast = 1.06;
+  const brightness = 4;
   for (let i = 0; i < data.length; i += 4) {
     for (let c = 0; c < 3; c++) {
       const idx = i + c;
@@ -758,19 +758,19 @@ function applyEnhancementsToCanvas(canvas, ctx, aiSettings) {
     }
   }
 
-  // optional denoise (light blur)
-  if (aiSettings.denoise) {
+  // denoise
+  if (aiSettings && aiSettings.denoise) {
     imageData = gaussianBlur(imageData, w, h);
     data = imageData.data;
   }
 
-  // sharpen (for faceEnhance and denoise)
-  if (aiSettings.denoise || aiSettings.faceEnhance) {
+  // sharpen for faces / clarity
+  if (aiSettings && (aiSettings.denoise || aiSettings.faceEnhance)) {
     imageData = sharpen(imageData, w, h);
   }
 
-  // upscale if requested (simple resize placeholder)
-  if (aiSettings.upscale2x || aiSettings.upscale4x) {
+  // upscale
+  if (aiSettings && (aiSettings.upscale2x || aiSettings.upscale4x)) {
     const scale = aiSettings.upscale4x ? 4 : 2;
     const tempCanvas = document.createElement("canvas");
     tempCanvas.width = w;
@@ -909,6 +909,8 @@ async function runEnhancer(previewOnly = false) {
 
   if (aiSettings) {
     applyEnhancementsToCanvas(canvas, ctx, aiSettings);
+  } else {
+    applyEnhancementsToCanvas(canvas, ctx, {}); // default light
   }
 
   enhStatus.textContent = "Encoding output...";
@@ -976,6 +978,24 @@ document.querySelectorAll(".help-tip").forEach(el => {
 });
 
 /* ------------------------------
+   ABOUT MODAL LOGIC
+------------------------------ */
+
+const aboutBtn = $("aboutBtn");
+const aboutModal = $("aboutModal");
+const closeAbout = $("closeAbout");
+
+if (aboutBtn && aboutModal && closeAbout) {
+  aboutBtn.addEventListener("click", () => {
+    aboutModal.style.display = "flex";
+  });
+
+  closeAbout.addEventListener("click", () => {
+    aboutModal.style.display = "none";
+  });
+}
+
+/* ------------------------------
    MISC
 ------------------------------ */
 
@@ -987,7 +1007,7 @@ imgQuality.addEventListener("input", () => {
 
 updateSwitchLabel();
 if (!isAuthed()) {
-  // keep modal visible
+  // keep modal visible until password
 } else {
   showSection("home");
 }
