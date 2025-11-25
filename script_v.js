@@ -684,6 +684,9 @@ const enhUpscale2x = $("enhUpscale2x");
 const enhUpscale4x = $("enhUpscale4x");
 const enhFaceEnhance = $("enhFaceEnhance");
 const enhDenoise = $("enhDenoise");
+const enhOCR = $("enhOCR");
+const enhHDR = $("enhHDR");
+const enhHide = $("enhHide");
 
 const enhQuality = $("enhQuality");
 const enhQualityVal = $("enhQualityVal");
@@ -692,7 +695,10 @@ const enhRunBtn = $("enhRunBtn");
 const enhStatus = $("enhStatus");
 const enhProgress = $("enhProgress");
 
+const hideAreaBtn = $("hideAreaBtn");
+
 let enhanceFile = null;
+let enhHideBox = null; // {xRel,yRel,wRel,hRel}
 
 /* drag & drop for enhancer */
 
@@ -729,24 +735,28 @@ function getEnhSettings() {
     upscale2x: !!enhUpscale2x.checked,
     upscale4x: !!enhUpscale4x.checked,
     faceEnhance: !!enhFaceEnhance.checked,
-    denoise: !!enhDenoise.checked
+    denoise: !!enhDenoise.checked,
+    ocr: !!enhOCR.checked,
+    hdr: !!enhHDR.checked,
+    objectHide: !!enhHide.checked
   };
   if (s.upscale2x && s.upscale4x) s.upscale2x = false;
-  const any = s.upscale2x || s.upscale4x || s.faceEnhance || s.denoise;
+  const any = s.upscale2x || s.upscale4x || s.faceEnhance || s.denoise || s.ocr || s.hdr || s.objectHide;
   return any ? s : null;
 }
 
-/* Enhancement pipeline helpers */
+/* Enhancement helpers */
 
 function applyEnhancementsToCanvas(canvas, ctx, aiSettings) {
-  const w = canvas.width;
-  const h = canvas.height;
+  let w = canvas.width;
+  let h = canvas.height;
+
   let imageData = ctx.getImageData(0, 0, w, h);
   let data = imageData.data;
 
   const clamp = v => v < 0 ? 0 : (v > 255 ? 255 : v);
 
-  // base small contrast/brightness tweak (warm)
+  // base light contrast / warmth
   const contrast = 1.06;
   const brightness = 4;
   for (let i = 0; i < data.length; i += 4) {
@@ -761,15 +771,17 @@ function applyEnhancementsToCanvas(canvas, ctx, aiSettings) {
   // denoise
   if (aiSettings && aiSettings.denoise) {
     imageData = gaussianBlur(imageData, w, h);
-    data = imageData.data;
   }
 
-  // sharpen for faces / clarity
+  // face / detail sharpen
   if (aiSettings && (aiSettings.denoise || aiSettings.faceEnhance)) {
     imageData = sharpen(imageData, w, h);
   }
 
-  // upscale
+  // put base processed image
+  ctx.putImageData(imageData, 0, 0);
+
+  // upscale after basic processing
   if (aiSettings && (aiSettings.upscale2x || aiSettings.upscale4x)) {
     const scale = aiSettings.upscale4x ? 4 : 2;
     const tempCanvas = document.createElement("canvas");
@@ -784,12 +796,37 @@ function applyEnhancementsToCanvas(canvas, ctx, aiSettings) {
     canvas.height = newH;
     ctx = canvas.getContext("2d");
     ctx.drawImage(tempCanvas, 0, 0, newW, newH);
-  } else {
-    ctx.putImageData(imageData, 0, 0);
+
+    w = newW;
+    h = newH;
+    imageData = ctx.getImageData(0, 0, w, h);
+  }
+
+  // OCR / text clarity
+  if (aiSettings && aiSettings.ocr) {
+    imageData = applyOCRBoost(imageData, w, h);
+  }
+
+  // HDR tone mapping
+  if (aiSettings && aiSettings.hdr) {
+    imageData = applyHDRToneMap(imageData, w, h);
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  // object hide (privacy blur) using saved rect (relative coords)
+  if (aiSettings && aiSettings.objectHide && enhHideBox) {
+    const boxPx = {
+      x: Math.round(enhHideBox.xRel * w),
+      y: Math.round(enhHideBox.yRel * h),
+      width: Math.round(enhHideBox.wRel * w),
+      height: Math.round(enhHideBox.hRel * h)
+    };
+    blurRegionOnCanvas(ctx, boxPx);
   }
 }
 
-/* simple blur */
+/* simple blur (used for denoise & region blur) */
 
 function gaussianBlur(imageData, w, h) {
   const src = imageData.data;
@@ -866,13 +903,79 @@ function sharpen(imageData, w, h) {
   return imageData;
 }
 
+/* OCR / text clarity — local contrast + stronger edge sharpening */
+
+function applyOCRBoost(imageData, w, h) {
+  const src = imageData.data;
+  const out = new Uint8ClampedArray(src.length);
+
+  const kernel = [ 0, -1,  0,
+                  -1,  5.2, -1,
+                   0, -1,  0 ];
+  const idx = (x, y) => (y * w + x) * 4;
+
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      let r = 0, g = 0, b = 0, a = 0;
+      for (let ky = -1; ky <= 1; ky++) {
+        for (let kx = -1; kx <= 1; kx++) {
+          const ix = x + kx;
+          const iy = y + ky;
+          const wgt = kernel[(ky + 1) * 3 + (kx + 1)];
+          const base = idx(ix, iy);
+          r += src[base] * wgt;
+          g += src[base + 1] * wgt;
+          b += src[base + 2] * wgt;
+          a += src[base + 3] * wgt;
+        }
+      }
+      const o = idx(x, y);
+      out[o] = Math.max(0, Math.min(255, r));
+      out[o + 1] = Math.max(0, Math.min(255, g));
+      out[o + 2] = Math.max(0, Math.min(255, b));
+      out[o + 3] = Math.max(0, Math.min(255, a));
+    }
+  }
+
+  imageData.data.set(out);
+  return imageData;
+}
+
+/* HDR tone mapping — lift shadows, compress highlights */
+
+function applyHDRToneMap(imageData, w, h) {
+  const d = imageData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      let v = d[i + c];
+      if (v < 60) {
+        v = v + 22;            // lift shadows
+      } else if (v > 210) {
+        v = 210 + (v - 210) * 0.6; // compress highlights
+      }
+      d[i + c] = v < 0 ? 0 : (v > 255 ? 255 : v);
+    }
+  }
+  return imageData;
+}
+
+/* blur region on canvas (for object hide) */
+
+function blurRegionOnCanvas(ctx, box) {
+  const { x, y, width, height } = box;
+  if (width <= 0 || height <= 0) return;
+  const region = ctx.getImageData(x, y, width, height);
+  const blurred = gaussianBlur(region, width, height);
+  ctx.putImageData(blurred, x, y);
+}
+
 /* enhancer quality slider */
 
 enhQuality.addEventListener("input", () => {
   enhQualityVal.textContent = enhQuality.value + "%";
 });
 
-/* Enhance & Download */
+/* Enhance & Download / Preview */
 
 async function runEnhancer(previewOnly = false) {
   if (!enhanceFile) {
@@ -953,6 +1056,172 @@ async function runEnhancer(previewOnly = false) {
 
 enhPreviewBtn.addEventListener("click", () => runEnhancer(true));
 enhRunBtn.addEventListener("click", () => runEnhancer(false));
+
+/* ------------------------------
+   OBJECT HIDE MODAL (OH1 rectangle)
+------------------------------ */
+
+const hideModal = $("hideModal");
+const hidePreview = $("hidePreview");
+const hideCanvas = $("hideCanvas");
+const hideRect = $("hideRect");
+const saveHide = $("saveHide");
+const clearHide = $("clearHide");
+const closeHide = $("closeHide");
+
+let hideRectVisible = false;
+let hideDragState = { dragging: false, resizing: false, startX: 0, startY: 0, startLeft: 0, startTop: 0, startW: 0, startH: 0 };
+
+hideAreaBtn.addEventListener("click", () => {
+  if (!enhanceFile) {
+    alert("Upload an image first.");
+    return;
+  }
+  openHideModal();
+});
+
+function openHideModal() {
+  hideModal.style.display = "flex";
+  hideRect.style.display = "none";
+  hideRectVisible = false;
+
+  revokeIfBlobUrl(hidePreview);
+  const url = URL.createObjectURL(enhanceFile);
+  hidePreview.src = url;
+
+  hidePreview.onload = () => {
+    const imgRect = hidePreview.getBoundingClientRect();
+    requestAnimationFrame(() => {
+      const w = Math.max(80, imgRect.width * 0.3);
+      const h = Math.max(80, imgRect.height * 0.2);
+      const cx = imgRect.left + imgRect.width / 2;
+      const cy = imgRect.top + imgRect.height / 2;
+      setHideRectFromCenter(cx, cy, w, h);
+      hideRect.style.display = "block";
+      hideRectVisible = true;
+    });
+  };
+}
+
+function setHideRectFromCenter(cx, cy, w, h) {
+  const c = hideCanvas.getBoundingClientRect();
+  let left = cx - w / 2, top = cy - h / 2;
+
+  if (left < c.left) left = c.left;
+  if (top < c.top) top = c.top;
+  if (left + w > c.right) left = c.right - w;
+  if (top + h > c.bottom) top = c.bottom - h;
+
+  hideRect.style.left = (left - c.left) + "px";
+  hideRect.style.top = (top - c.top) + "px";
+  hideRect.style.width = w + "px";
+  hideRect.style.height = h + "px";
+}
+
+/* drag & resize hide rect */
+
+hideRect.addEventListener("mousedown", e => {
+  if (e.target.classList.contains("focus-handle")) return;
+  const r = hideRect.getBoundingClientRect();
+  const c = hideCanvas.getBoundingClientRect();
+  hideDragState.dragging = true;
+  hideDragState.startX = e.clientX;
+  hideDragState.startY = e.clientY;
+  hideDragState.startLeft = r.left - c.left;
+  hideDragState.startTop = r.top - c.top;
+  hideDragState.startW = r.width;
+  hideDragState.startH = r.height;
+  e.preventDefault();
+});
+
+hideRect.querySelector(".focus-handle").addEventListener("mousedown", e => {
+  hideDragState.resizing = true;
+  hideDragState.startX = e.clientX;
+  hideDragState.startY = e.clientY;
+  const r = hideRect.getBoundingClientRect();
+  hideDragState.startW = r.width;
+  hideDragState.startH = r.height;
+  e.preventDefault();
+});
+
+document.addEventListener("mousemove", e => {
+  const c = hideCanvas.getBoundingClientRect();
+
+  if (hideDragState.dragging && hideRectVisible) {
+    const dx = e.clientX - hideDragState.startX;
+    const dy = e.clientY - hideDragState.startY;
+    let L = hideDragState.startLeft + dx;
+    let T = hideDragState.startTop + dy;
+    L = Math.max(0, Math.min(c.width - hideDragState.startW, L));
+    T = Math.max(0, Math.min(c.height - hideDragState.startH, T));
+    hideRect.style.left = L + "px";
+    hideRect.style.top = T + "px";
+  }
+
+  if (hideDragState.resizing && hideRectVisible) {
+    const dx = e.clientX - hideDragState.startX;
+    const dy = e.clientY - hideDragState.startY;
+    let W = Math.max(40, hideDragState.startW + dx);
+    let H = Math.max(40, hideDragState.startH + dy);
+    W = Math.min(W, c.width);
+    H = Math.min(H, c.height);
+    hideRect.style.width = W + "px";
+    hideRect.style.height = H + "px";
+  }
+});
+
+document.addEventListener("mouseup", () => {
+  hideDragState.dragging = false;
+  hideDragState.resizing = false;
+});
+
+hideCanvas.addEventListener("dblclick", e => {
+  const imgRect = hidePreview.getBoundingClientRect();
+  if (!imgRect.width) return;
+  let x = e.clientX, y = e.clientY;
+  if (x < imgRect.left) x = imgRect.left;
+  if (x > imgRect.right) x = imgRect.right;
+  if (y < imgRect.top) y = imgRect.top;
+  if (y > imgRect.bottom) y = imgRect.bottom;
+
+  const r = hideRect.getBoundingClientRect();
+  setHideRectFromCenter(x, y, r.width || 120, r.height || 80);
+});
+
+function saveHideBox() {
+  const rect = hideRect.getBoundingClientRect();
+  const img = hidePreview.getBoundingClientRect();
+  if (!img.width || !img.height) return;
+
+  const xRel = (rect.left - img.left) / img.width;
+  const yRel = (rect.top - img.top) / img.height;
+  const wRel = rect.width / img.width;
+  const hRel = rect.height / img.height;
+
+  enhHideBox = {
+    xRel: Math.max(0, Math.min(1, xRel)),
+    yRel: Math.max(0, Math.min(1, yRel)),
+    wRel: Math.max(0, Math.min(1, wRel)),
+    hRel: Math.max(0, Math.min(1, hRel))
+  };
+}
+
+saveHide.addEventListener("click", () => {
+  if (!hideRectVisible) return alert("Drag the rectangle first.");
+  saveHideBox();
+  alert("Hide area saved.");
+});
+
+clearHide.addEventListener("click", () => {
+  enhHideBox = null;
+  hideRect.style.display = "none";
+  hideRectVisible = false;
+});
+
+closeHide.addEventListener("click", () => {
+  hideModal.style.display = "none";
+  revokeIfBlobUrl(hidePreview);
+});
 
 /* ------------------------------
    TOOLTIP LOGIC
