@@ -32,7 +32,7 @@
 }
 
 /* -----------------------------------------------------
-   LAYOUT STRUCTURE
+   BASE
 ----------------------------------------------------- */
 
 body {
@@ -43,14 +43,13 @@ body {
 }
 
 .app-wrap {
-  max-width: 1080px;
+  max-width: 1100px;
   margin: auto;
   padding: 26px;
 }
 
-/* -----------------------------------------------------
-   TOPBAR
------------------------------------------------------ */
+/* TOPBAR */
+
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -77,6 +76,11 @@ body {
   font-size: 18px;
 }
 
+h1 {
+  margin: 0;
+  font-size: 18px;
+}
+
 .tagline {
   font-size: 13px;
   color: var(--muted);
@@ -87,6 +91,7 @@ body {
   background: transparent;
   border: 0;
   font-size: 20px;
+  color: var(--text);
 }
 
 .status {
@@ -95,37 +100,40 @@ body {
 }
 
 /* -----------------------------------------------------
-   HOME
+   HOME SECTION (TWO TOOL CARDS)
 ----------------------------------------------------- */
+
 .home-section {
   display: flex;
   justify-content: center;
-  padding-top: 80px;
+  gap: 22px;
+  padding-top: 60px;
 }
 
 .tool-card {
   width: 320px;
-  padding: 28px;
+  padding: 26px;
   text-align: center;
   border-radius: 14px;
   background: var(--panel);
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   cursor: pointer;
-  transition: transform .2s;
+  transition: transform .2s, box-shadow .2s;
 }
 
 .tool-card:hover {
   transform: translateY(-6px);
+  box-shadow: 0 16px 45px rgba(0,0,0,0.5);
 }
 
 .tool-card .icon {
-  font-size: 48px;
-  margin-bottom: 10px;
+  font-size: 46px;
+  margin-bottom: 8px;
 }
 
 .tool-card h3 {
-  margin: 0;
+  margin: 0 0 4px;
 }
 
 .tool-card p {
@@ -134,8 +142,9 @@ body {
 }
 
 /* -----------------------------------------------------
-   SECTION
+   SECTIONS
 ----------------------------------------------------- */
+
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -158,9 +167,7 @@ body {
   cursor: pointer;
 }
 
-/* -----------------------------------------------------
-   PANELS & INPUTS
------------------------------------------------------ */
+/* Panels & layout */
 
 .panel {
   background: var(--panel);
@@ -168,6 +175,21 @@ body {
   border-radius: 12px;
   padding: 18px;
   box-shadow: var(--shadow);
+}
+
+.two-input {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
 }
 
 .dropzone {
@@ -180,20 +202,27 @@ body {
   margin-bottom: 14px;
 }
 
-.input {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text);
+input[type="file"] {
+  display: none;
 }
 
-.two-input {
-  display: flex;
-  gap: 10px;
-  margin: 12px 0;
+/* file list */
+
+.file-list {
+  margin-top: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  font-size: 13px;
+  max-height: 160px;
+  overflow: auto;
 }
+
+.small-file {
+  max-height: none;
+}
+
+/* controls row */
 
 .controls {
   display: flex;
@@ -206,7 +235,7 @@ body {
   flex-grow: 1;
 }
 
-/* ------------------------ Smart ON/OFF Switch ------------------------- */
+/* smart toggle */
 
 .ai-switch {
   display: flex;
@@ -238,25 +267,25 @@ body {
   left: 24px;
 }
 
-.on-label,
-.off-label {
+.label-on,
+.label-off {
   font-size: 12px;
   color: var(--muted);
 }
 
-.ai-switch.active .on-label {
+.ai-switch.active .label-on {
   color: var(--accent);
 }
 
-/* -----------------------------------------------------
-   BUTTONS
------------------------------------------------------ */
+/* buttons */
+
 .btn {
   padding: 10px 16px;
   border-radius: 8px;
   border: 0;
   cursor: pointer;
   font-weight: 600;
+  font-size: 14px;
 }
 
 .btn.primary {
@@ -274,9 +303,15 @@ body {
   width: 100%;
 }
 
-/* -----------------------------------------------------
-   PROGRESS BAR
------------------------------------------------------ */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+/* progress */
+
 .progress {
   height: 10px;
   background: rgba(255,255,255,0.06);
@@ -292,9 +327,13 @@ body {
   transition: width .25s;
 }
 
-/* -----------------------------------------------------
-   SMART BANNER
------------------------------------------------------ */
+.status-text {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* smart banner */
 
 .smart-banner {
   padding: 12px;
@@ -323,7 +362,86 @@ body {
 }
 
 /* -----------------------------------------------------
-   PREVIEW & FOCUS MODALS
+   ENHANCER LAYOUT
+----------------------------------------------------- */
+
+.enhancer-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr);
+  gap: 18px;
+}
+
+.enh-left,
+.enh-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+/* AI panel */
+
+.ai-panel {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.ai-panel-header .label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.ai-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: 8px;
+}
+
+.ai-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.ai-option input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.ai-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.9;
+}
+
+/* mini quality control */
+
+.mini-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.small-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mini-val {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* -----------------------------------------------------
+   MODALS
 ----------------------------------------------------- */
 
 .modal {
@@ -342,6 +460,7 @@ body {
   background: var(--card);
   padding: 18px;
   border-radius: 12px;
+  box-shadow: var(--shadow);
 }
 
 .modal-panel.large {
@@ -362,7 +481,8 @@ body {
   font-size: 20px;
 }
 
-/* Preview Area */
+/* preview */
+
 .preview-area {
   position:relative;
   height:420px;
@@ -388,21 +508,27 @@ body {
 
 .handle {
   position:absolute;
-  top:0;
-  bottom:0;
+  top:0; bottom:0;
   width:4px;
   background: var(--accent);
   left:50%;
   cursor: ew-resize;
 }
 
-/* Focus */
+/* focus */
+
 .focus-canvas {
   position:relative;
   height:420px;
   background:#000;
   border-radius:10px;
   overflow:hidden;
+}
+
+.focus-canvas img {
+  width:100%;
+  height:100%;
+  object-fit:contain;
 }
 
 .focus-rect {
@@ -421,20 +547,72 @@ body {
   cursor:nwse-resize;
 }
 
-/* -----------------------------------------------------
-   FOOTER
------------------------------------------------------ */
+/* text helpers */
+
+.small {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.small-muted {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.error {
+  color: #ff8080;
+  font-size: 12px;
+  min-height: 18px;
+}
+
+/* footer */
+
 .footer {
   text-align:center;
   font-size: 13px;
   color: var(--muted);
-  margin-top: 26px;
+  margin-top: 24px;
+}
+
+/* -----------------------------------------------------
+   ANIMATIONS & HOVER
+----------------------------------------------------- */
+
+.section,
+.home-section {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.section.active,
+.home-section.active {
+  opacity: 1;
+}
+
+.btn {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 /* -----------------------------------------------------
    RESPONSIVE
 ----------------------------------------------------- */
 
+@media (max-width: 880px) {
+  .enhancer-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 760px) {
-  .two-input { flex-direction: column; }
+  .home-section {
+    flex-direction: column;
+  }
+  .two-input {
+    flex-direction: column;
+  }
 }
