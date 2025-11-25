@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Meta Media Hub — Image Suite</title>
+  <title>Meta Media Hub — Image Suite (Annotator Mode)</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -28,7 +28,7 @@
       </div>
     </header>
 
-    <!-- PASSWORD MODAL -->
+    <!-- PASSWORD MODAL (kept) -->
     <div id="pwModal" class="modal" style="display:flex">
       <div class="modal-panel pw-panel">
         <h2>Enter Password</h2>
@@ -39,83 +39,22 @@
       </div>
     </div>
 
-    <!-- HOME (TWO TOOLS) -->
+    <!-- HOME -->
     <section id="home" class="home-section" style="display:none">
-      <div class="tool-card" id="btnImage" data-tip="Batch image tools (scan-only human detection)">
+      <div class="tool-card" id="btnImage">
         <div class="icon">🖼️</div>
         <h3>Image Tools</h3>
         <p>Resize • Smart Center • Human Detection • (No ZIP)</p>
       </div>
 
-      <div class="tool-card" id="btnEnhancer" data-tip="AI-enhancement + annotation">
+      <div class="tool-card" id="btnEnhancer">
         <div class="icon">✨</div>
         <h3>AI Image Enhancer</h3>
         <p>Upscale • Sharpen • Denoise • HDR • Text clarity</p>
       </div>
     </section>
 
-    <!-- IMAGE RESIZER SECTION -->
-    <section id="imageSection" class="section" style="display:none">
-
-      <div class="section-header">
-        <div>
-          <h2>Image Tools</h2>
-          <p class="subtitle">Batch resize with smart human detection & manual focus.</p>
-        </div>
-        <button id="backHomeFromImage" class="back-btn">← Home</button>
-      </div>
-
-      <div id="smartBanner" class="smart-banner off" style="display:none">
-        <div id="bannerIcon" class="s-icon">⚪</div>
-        <div id="bannerText" class="s-text">
-          Smart Human Detection status will appear here after scanning.
-        </div>
-      </div>
-
-      <div class="panel">
-        <div id="dropImage" class="dropzone" data-tip="Click or drop multiple images for scan-only human detection.">
-          Click or drag & drop images here (multiple)
-        </div>
-        <input id="imageInput" type="file" accept="image/*" multiple>
-
-        <div id="imageFileList" class="file-list">No files uploaded.</div>
-
-        <div class="two-input">
-          <input id="imgWidth" class="input" type="number" placeholder="Width (px)">
-          <input id="imgHeight" class="input" type="number" placeholder="Height (px)">
-        </div>
-
-        <div class="controls">
-          <div class="mini-control">
-            <label>Quality</label>
-            <div class="help-tip" data-tip="Higher quality -> larger file. 90% is a good default for LMS assets.">?</div>
-          </div>
-          <input id="imgQuality" type="range" min="60" max="100" value="90">
-          <span id="imgQualityVal">90%</span>
-
-          <div class="flex-spacer"></div>
-
-          <div id="imgAiToggle" class="ai-switch" title="Smart Human Detection" data-tip="Smart detection marker (read-only)"><div class="track"><div class="ball"></div></div>
-            <span class="label-off">Smart Detection: OFF</span>
-            <span class="label-on">Smart Detection: ON</span>
-          </div>
-        </div>
-
-        <div class="btn-row">
-          <button id="imgPreviewBtn" class="btn ghost" data-tip="Preview the first image (if available)">Preview First</button>
-          <button id="focusBtn" class="btn ghost" data-tip="Open Manual Focus tool">Manual Focus</button>
-        </div>
-
-        <div class="progress"><div id="imgProgress" class="bar"></div></div>
-        <p id="imgStatus" class="status-text">Ready.</p>
-      </div>
-
-      <footer class="footer">
-        Created by Mukesh Yadav • META E-learning Team
-      </footer>
-    </section>
-
-    <!-- AI IMAGE ENHANCER SECTION -->
+    <!-- ENHANCER SECTION -->
     <section id="enhancerSection" class="section" style="display:none">
       <div class="section-header">
         <div>
@@ -133,10 +72,7 @@
           </div>
           <input id="enhanceInput" type="file" accept="image/*">
           <div id="enhFileInfo" class="file-list small-file">No image selected.</div>
-
-          <p class="small-muted">
-            Ideal for portraits, key visuals, LMS screenshots, thumbnails and hero images.
-          </p>
+          <p class="small-muted">Ideal for portraits, key visuals, LMS screenshots, thumbnails and hero images.</p>
         </div>
 
         <div class="enh-right">
@@ -148,29 +84,27 @@
             </div>
 
             <div class="ai-options">
-              <label class="ai-option" data-tip="Enlarge image 2× with a simple interpolation + sharpen pass."><input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span><div class="help-tip" data-tip="Simple 2× nearest-neighbor upscale + sharpen. Good for small images.">?</div></label>
 
-              <label class="ai-option" data-tip="Enlarge image 4× (heavier). Use only if needed."><input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span><div class="help-tip" data-tip="Stronger 4× interpolation. Use only if needed (larger memory/time).">?</div></label>
 
-              <label class="ai-option" data-tip="Apply edge-preserving sharpening for faces and UI elements."><input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span><div class="help-tip" data-tip="Local edge-aware sharpening to preserve facial detail and UI elements.">?</div></label>
 
-              <label class="ai-option" data-tip="Remove light noise, then apply gentle unsharp mask."><input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span><div class="help-tip" data-tip="Remove light sensor noise and apply a gentle unsharp mask.">?</div></label>
 
-              <label class="ai-option" data-tip="Boost contrast and clarity around small text for better legibility."><input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span><div class="help-tip" data-tip="Boost contrast and midtone clarity around small text for legibility.">?</div></label>
 
-              <label class="ai-option" data-tip="Lift shadows and compress highlights to reveal details across tones."><input type="checkbox" id="enhHDR"><span>HDR Boost</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhHDR"><span>HDR Boost (Shadows & Highlights)</span><div class="help-tip" data-tip="Lift shadows and gently compress highlights to preserve details.">?</div></label>
 
-              <label class="ai-option" data-tip="Select an area to blur (faces, IDs, logos). Use Set Hide Area to define region."><input type="checkbox" id="enhHide"><span>Object Hide / Privacy Blur</span></label>
+              <label class="ai-option"><input type="checkbox" id="enhHide"><span>Object Hide / Privacy Blur</span><div class="help-tip" data-tip="Select an area in Annotator to blur faces, IDs or logos.">?</div></label>
             </div>
 
             <div class="btn-row small-row">
-              <button id="hideAreaBtn" class="btn ghost" data-tip="Open mask editor to set blur rectangle">Set Hide Area</button>
+              <button id="hideAreaBtn" class="btn ghost" data-tip="Open Annotator focused on Blur tool">Set Hide Area</button>
+              <button id="openAnnotatorBtn" class="btn ghost" data-tip="Open full Annotator (all tools)">Annotate</button>
             </div>
 
-            <p class="ai-note">
-              These filters gently improve clarity, contrast and reduce noise using on-device processing.
-              No server, no upload.
-            </p>
+            <p class="ai-note">These filters gently improve clarity, contrast and reduce noise using on-device processing. No server, no upload.</p>
           </div>
 
           <div class="two-input">
@@ -183,7 +117,7 @@
           </div>
 
           <div class="btn-row">
-            <button id="enhPreviewBtn" class="btn ghost" data-tip="Update inline preview with current enhanced image">Preview</button>
+            <button id="enhPreviewBtn" class="btn ghost" data-tip="Update inline preview with current enhanced image (non-destructive)">Preview</button>
             <button id="enhRunBtn" class="btn primary" data-tip="Apply filters, merge annotations and download">Enhance & Download</button>
           </div>
 
@@ -192,45 +126,105 @@
         </div>
       </div>
 
-      <!-- ANNOTATION / PREVIEW AREA (shared) -->
+      <!-- ANNOTATION / PREVIEW -->
       <div class="panel" style="margin-top:14px">
         <div class="panel-title">Annotate / Preview</div>
 
         <div id="previewArea" class="preview-area" aria-hidden="true">
-          <!-- before (original image) - using uploaded file path -->
           <img id="beforeImg" alt="Before" src="/mnt/data/ee5ca6b2-da36-420c-8359-ec00b9cba47b.png" />
-          <!-- after layer (enhanced) -->
           <div id="afterLayer" class="after-layer"><img id="afterImg" alt="After" /></div>
 
-          <!-- Annotation canvas overlays the preview area -->
+          <!-- overlay canvas -->
           <canvas id="annoCanvas" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto;"></canvas>
-          <div id="annoHandle" class="handle" style="display:none"></div>
         </div>
 
-        <!-- Annotation toolbar (Option B) -->
-        <div id="annoToolbar" class="annotation-toolbar" style="display:none">
-          <div class="controls-row">
-            <button class="anno-btn" data-tool="rect" title="Draw a rectangle">Rectangle</button>
-            <button class="anno-btn" data-tool="arrow" title="Draw an arrow">Arrow</button>
-            <button class="anno-btn" data-tool="text" title="Add text (prompts for text)">Text</button>
-            <button class="anno-btn" data-tool="highlight" title="Highlight a region">Highlight</button>
-            <button class="anno-btn" data-tool="blur" title="Mark area to blur">Blur area</button>
-            <button class="anno-btn" data-tool="free" title="Freehand drawing">Freehand</button>
-            <button class="anno-btn" id="annUndo" title="Undo last action">Undo</button>
-            <button class="anno-btn" id="annClear" title="Clear all annotations">Clear</button>
-            <label class="anno-control">Color <input id="annColor" type="color" value="#ff7a3c"></label>
-            <label class="anno-control">Size <input id="annSize" type="range" min="1" max="30" value="4"></label>
-            <button id="annApply" class="btn primary">Apply</button>
+        <!-- condensed toolbar (shows state) -->
+        <div id="annoToolbarMini" class="annotation-toolbar" style="display:flex; justify-content:space-between; margin-top:12px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="miniAnnotateOpen" class="btn ghost" data-tip="Open Annotator modal">Open Annotator</button>
+            <div class="small-muted">Current: <span id="annoStateLabel">none</span></div>
           </div>
-          <div class="small muted" style="margin-top:8px">Draw on the image, then click Apply to merge annotations to the current enhanced image (client-only).</div>
+          <div>
+            <button id="annApply" class="btn primary" data-tip="Apply current annotations to the underlying image">Apply</button>
+          </div>
         </div>
+
       </div>
     </section>
 
     <footer class="footer" style="margin-top:18px">Created by Mukesh Yadav • META E-learning Team</footer>
   </div>
 
-  <!-- THEME MODAL -->
+  <!-- FULL ANNOTATOR MODAL (Option B) -->
+  <div id="annotatorModal" class="modal">
+    <div class="modal-panel theme-panel" style="max-width:1100px;">
+      <div class="modal-head">
+        <h3>Annotator — Full Editor</h3>
+        <div>
+          <button id="annotatorCancel" class="btn ghost">Cancel</button>
+          <button id="annotatorApply" class="btn primary">Apply & Close</button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-top:12px;">
+        <!-- toolbar column -->
+        <div style="width:280px;">
+          <div style="display:flex;flex-direction:column; gap:8px;">
+            <div class="small-muted">Tools</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <button class="annot-btn" data-tool="rect">Rectangle</button>
+              <button class="annot-btn" data-tool="arrow">Arrow</button>
+              <button class="annot-btn" data-tool="text">Text</button>
+              <button class="annot-btn" data-tool="highlight">Highlight</button>
+              <button class="annot-btn" data-tool="blur">Blur</button>
+              <button class="annot-btn" data-tool="free">Freehand</button>
+              <button id="annotUndo" class="annot-btn">Undo</button>
+              <button id="annotClear" class="annot-btn">Clear</button>
+            </div>
+
+            <div style="margin-top:8px;">
+              <label class="small-muted">Color</label><br>
+              <input id="annotColor" type="color" value="#ff7a3c" style="margin-top:6px;">
+            </div>
+
+            <div style="margin-top:8px;">
+              <label class="small-muted">Size</label><br>
+              <input id="annotSize" type="range" min="1" max="40" value="4">
+            </div>
+
+            <div style="margin-top:12px;">
+              <div class="small-muted">Quick Actions</div>
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button id="annotZoomFit" class="btn ghost">Fit</button>
+                <button id="annotZoom100" class="btn ghost">100%</button>
+                <button id="annotClearAll" class="btn ghost">Clear All</button>
+              </div>
+            </div>
+
+            <div style="margin-top:14px;">
+              <div class="small-muted">Tips</div>
+              <ul>
+                <li>Draw rectangle/blur then click Apply</li>
+                <li>Text opens a prompt for quick entry</li>
+                <li>Use Apply & Close to merge into image</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- canvas area -->
+        <div style="flex:1; position:relative;">
+          <div id="annotCanvasWrap" style="height:640px; background:#111; border-radius:8px; overflow:hidden; position:relative;">
+            <img id="annotBase" alt="annot base" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none" />
+            <canvas id="annotCanvas" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto;"></canvas>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- THEME & ABOUT MODALS (kept simple) -->
   <div id="themeModal" class="modal">
     <div class="modal-panel theme-panel">
       <div class="modal-head">
@@ -246,40 +240,19 @@
     </div>
   </div>
 
-  <!-- ABOUT MODAL -->
   <div id="aboutModal" class="modal">
     <div class="modal-panel about-panel">
       <div class="modal-head">
         <div class="about-head">
           <span class="about-pill">About</span>
           <h3>Meta Media Hub</h3>
-          <p>Internal image toolkit for fast, safe e-learning & media production.</p>
         </div>
         <button id="closeAbout" class="close-btn">✕</button>
       </div>
       <div class="about-grid">
         <div class="about-col">
           <h4>What it does</h4>
-          <ul>
-            <li>Batch resize with smart human detection (scan-only)</li>
-            <li>Manual focus cropping for key subjects</li>
-            <li>AI-style enhancement (upscale, sharpen, denoise)</li>
-            <li>Inline annotation + privacy blur</li>
-          </ul>
         </div>
-        <div class="about-col">
-          <h4>Safety & workflow</h4>
-          <ul>
-            <li>All processing stays inside your browser</li>
-            <li>No uploads, no cloud — safe for confidential assets</li>
-            <li>Designed for META e-learning & media teams</li>
-            <li>Use the Preview button to validate changes before applying</li>
-          </ul>
-        </div>
-      </div>
-      <div class="about-footer-row">
-        <span class="about-meta">v1.6 • Designed & built by <strong>Mukesh Yadav</strong></span>
-        <span class="about-meta">Contact: META E-learning / Media team</span>
       </div>
     </div>
   </div>
@@ -288,7 +261,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
 
-  <!-- MAIN SCRIPT -->
-  <script src="script_v.js"></script>
+  <!-- MAIN SCRIPT (updated) -->
+  <script src="script_v_annotator.js"></script>
 </body>
 </html>
