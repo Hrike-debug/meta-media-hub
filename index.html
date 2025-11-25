@@ -16,19 +16,20 @@
         <div class="logo">MM</div>
         <div>
           <h1>Meta Media Hub</h1>
-          <span class="tagline">Compact browser-based image tools</span>
+          <span class="tagline">Internal image toolkit for META e-learning</span>
         </div>
       </div>
 
       <div class="right">
-        <button id="themeToggle" class="theme-toggle">🌙</button>
+        <button id="themeToggle" class="theme-toggle" title="Toggle light/dark">🌙</button>
         <span id="statusText" class="status">Locked</span>
+        <button id="aboutBtn" class="about-btn" title="About this tool">i</button>
       </div>
     </header>
 
     <!-- PASSWORD MODAL -->
     <div id="pwModal" class="modal" style="display:flex">
-      <div class="modal-panel">
+      <div class="modal-panel pw-panel">
         <h2>Enter Password</h2>
         <p class="small">Unlock the Meta Media Hub</p>
         <input id="pwInput" class="input" type="password" placeholder="Password" />
@@ -37,7 +38,7 @@
       </div>
     </div>
 
-    <!-- HOME (2 TOOLS) -->
+    <!-- HOME (TWO TOOLS) -->
     <section id="home" class="home-section" style="display:none">
       <div class="tool-card" id="btnImage">
         <div class="icon">🖼️</div>
@@ -50,27 +51,6 @@
         <h3>AI Image Enhancer</h3>
         <p>Upscale • Sharpen • Denoise • Boost Quality</p>
       </div>
-    </section>
-
-    <!-- ABOUT SECTION -->
-    <section class="about">
-      <h3>About Meta Media Hub</h3>
-      <p>
-        This internal tool was created by the META E-Learning Team to speed up media workflows,
-        improve asset quality and reduce repetitive manual work. All processing happens locally
-        inside your browser — files are never uploaded to any server.
-      </p>
-
-      <ul class="about-list">
-        <li>Batch resize with smart human detection</li>
-        <li>AI-style enhancement & quality optimization</li>
-        <li>Manual focus cropping for critical visuals</li>
-        <li>Offline processing — safe for confidential content</li>
-      </ul>
-
-      <p class="about-foot">
-        Version 1.5 • Designed and developed by <strong>Mukesh Yadav</strong>
-      </p>
     </section>
 
     <!-- IMAGE RESIZER SECTION -->
@@ -167,6 +147,7 @@
               <span class="label">Smart Enhancements (processed locally)</span>
               <div class="help-tip" data-tip="These processors work directly in your browser using Canvas. No upload, no server, safe for internal projects.">?</div>
             </div>
+
             <div class="ai-options">
               <label class="ai-option">
                 <input type="checkbox" id="enhUpscale2x">
@@ -189,6 +170,7 @@
                 <div class="help-tip" data-tip="Reduces grain and applies gentle sharpening. Good for noisy screenshots or compressed JPEGs.">?</div>
               </label>
             </div>
+
             <p class="ai-note">
               These filters gently improve clarity, contrast and reduce noise using on-device processing.
               No server, no upload.
@@ -254,6 +236,47 @@
         <div class="btn-row">
           <button id="saveFocus" class="btn primary">Save Focus</button>
           <button id="clearFocus" class="btn ghost">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABOUT MODAL -->
+    <div id="aboutModal" class="modal">
+      <div class="modal-panel about-panel">
+        <div class="modal-head">
+          <div class="about-head">
+            <span class="about-pill">About</span>
+            <h3>Meta Media Hub</h3>
+            <p>Internal image toolkit for fast, safe e-learning & media production.</p>
+          </div>
+          <button id="closeAbout" class="close-btn">✕</button>
+        </div>
+
+        <div class="about-grid">
+          <div class="about-col">
+            <h4>What it does</h4>
+            <ul>
+              <li>Batch resize with smart human detection</li>
+              <li>Manual focus cropping for key subjects</li>
+              <li>AI-style enhancement (upscale, sharpen, denoise)</li>
+              <li>ZIP export for quick LMS uploads</li>
+            </ul>
+          </div>
+
+          <div class="about-col">
+            <h4>Safety & workflow</h4>
+            <ul>
+              <li>All processing stays inside your browser</li>
+              <li>No uploads, no cloud, safe for confidential assets</li>
+              <li>Designed for META e-learning & media teams</li>
+              <li>Ideal for ILTs, WBTs, storyboards & thumbnails</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="about-footer-row">
+          <span class="about-meta">v1.5 • Designed & built by <strong>Mukesh Yadav</strong></span>
+          <span class="about-meta">Contact: META E-learning / Media team</span>
         </div>
       </div>
     </div>
