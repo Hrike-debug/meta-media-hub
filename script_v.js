@@ -379,15 +379,44 @@ enhRunBtn.addEventListener("click", ()=>{
   enhStatus.textContent = "Enhancement complete. File downloaded.";
 });
 
-/* Preview = current enhanceCanvas */
-enhPreviewBtn.addEventListener("click", ()=>{
-  if(!enhanceCanvas.width){
-    alert("Upload image first!");
-    return;
-  }
-  const out = enhanceCanvas.toDataURL("image/jpeg", 0.92);
-  window.open(out, "_blank");
+if(enhPreviewBtn){
+  enhPreviewBtn.addEventListener("click", ()=>{
+    if(!enhanceCanvas.width){
+      alert("Upload an image first!");
+      return;
+    }
+
+    // BEFORE
+    const beforeUrl = enhanceCanvas.toDataURL("image/jpeg", 0.92);
+    $("beforeImg").src = beforeUrl;
+
+    // AFTER (temporary process preview copy)
+    let previewData = enhanceCtx.getImageData(0,0,enhanceCanvas.width,enhanceCanvas.height);
+
+    if(enhOCR.checked) previewData = applyOCRBoost(previewData);
+    if(enhHDR.checked) previewData = applyHDRToneMap(previewData);
+    enhanceCtx.putImageData(previewData,0,0);
+
+    $("afterImg").src = enhanceCanvas.toDataURL("image/jpeg", 0.92);
+
+    // Reset canvas to original
+    loadEnhImage(enhanceFiles[0]);
+
+    // OPEN MODAL
+    const modal = $("previewModal");
+    modal.style.display = "flex";
+    modal.setAttribute("aria-hidden","false");
+
+    // set slider to 50-50
+    $("afterLayer").style.width = "50%";
+    $("handle").style.left = "50%";
+  });
+}
+
+$("closePreview").addEventListener("click", ()=>{
+  $("previewModal").style.display = "none";
 });
+
 
 
 /* ---------------------------
@@ -674,3 +703,4 @@ function download(url,name){
 }
 
 /* Default view after unlock is handled above */
+
