@@ -1,14 +1,20 @@
 /* script_v_annotator.js
-   Updated main script implementing Option B (Annotator Modal + real Preview pipeline)
+   Full professional annotator + enhancer pipeline (Option 1)
+   - Single shared actionsStack across inline overlay + full modal
+   - Rectangle / Arrow / Text / Highlight / Blur / Freehand
+   - Undo / Redo / Clear / Apply (merge to high-res natural canvas)
+   - Non-destructive Preview button
+   - Set Hide Area opens annotator with blur preselected
+   - Tooltips unified
+   - Default test image from session: /mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png
 */
 
 const $ = id => document.getElementById(id);
 const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
 
-/* ---------- Auth + basic nav (unchanged) ---------- */
+/* ----------------- Auth + simple nav ----------------- */
 const PASSWORD = "Meta@123";
 const AUTH_KEY = "mm_auth_v4";
-const THEME_KEY = "mm_theme_choice";
 
 const pwModal = $("pwModal"), pwInput = $("pwInput"), pwBtn = $("pwBtn"), pwMsg = $("pwMsg");
 const statusText = $("statusText");
@@ -39,44 +45,42 @@ async function unlock(){
 }
 on(pwBtn, "click", unlock);
 on(pwInput, "keydown", e => { if(e.key === "Enter") unlock(); });
+if(isAuthed()){ if(pwModal) pwModal.style.display = "none"; if(statusText) statusText.textContent = "Unlocked"; showSection("home"); }
 
-if(isAuthed()){
-  if(pwModal) pwModal.style.display = "none";
-  if(statusText) statusText.textContent = "Unlocked";
-  showSection("home");
-}
-
-/* --------- Theme + small helpers (kept minimal) --------- */
+/* small nav wiring */
 on($("btnEnhancer"), "click", ()=> showSection("enhance"));
 on($("backHomeFromEnhancer"), "click", ()=> showSection("home"));
 on($("aboutBtn"), "click", ()=> { const m = $("aboutModal"); if(m) m.style.display = "flex"; });
 on($("closeAbout"), "click", ()=> { const m = $("aboutModal"); if(m) m.style.display = "none"; });
 
-/* Tooltips: global handler */
+/* ---------------- Tooltips (unified) ---------------- */
 const tooltipBox = document.createElement("div");
 tooltipBox.className = "tooltip-box";
 tooltipBox.style.display = "none";
 document.body.appendChild(tooltipBox);
 let tooltipTimer = null;
-document.querySelectorAll(".help-tip").forEach(el=>{
-  el.addEventListener("mouseenter", ()=>{
-    const tip = el.dataset.tip || el.getAttribute("data-tip") || "Info";
-    tooltipTimer = setTimeout(()=>{
-      tooltipBox.textContent = tip;
-      tooltipBox.style.display = "block";
-      const r = el.getBoundingClientRect();
-      const topTry = r.top - tooltipBox.offsetHeight - 8;
-      tooltipBox.style.top = (topTry > 8 ? topTry : (r.bottom + 8)) + "px";
-      tooltipBox.style.left = Math.max(8, Math.min(window.innerWidth - tooltipBox.offsetWidth - 8, r.left)) + "px";
-    }, 160);
+function attachHelpTips(scope = document){
+  Array.from(scope.querySelectorAll("[data-tip], .help-tip")).forEach(el=>{
+    el.addEventListener("mouseenter", ()=>{
+      const tip = el.dataset.tip || el.getAttribute("data-tip") || el.getAttribute("title") || "Info";
+      tooltipTimer = setTimeout(()=>{
+        tooltipBox.textContent = tip;
+        tooltipBox.style.display = "block";
+        const r = el.getBoundingClientRect();
+        const topTry = r.top - tooltipBox.offsetHeight - 8;
+        tooltipBox.style.top = (topTry > 8 ? topTry : (r.bottom + 8)) + "px";
+        tooltipBox.style.left = Math.max(8, Math.min(window.innerWidth - tooltipBox.offsetWidth - 8, r.left)) + "px";
+      }, 140);
+    });
+    el.addEventListener("mouseleave", ()=> {
+      clearTimeout(tooltipTimer);
+      tooltipBox.style.display = "none";
+    });
   });
-  el.addEventListener("mouseleave", ()=> {
-    clearTimeout(tooltipTimer);
-    tooltipBox.style.display = "none";
-  });
-});
+}
+attachHelpTips(document);
 
-/* ---------------- Enhancer & Preview pipeline ---------------- */
+/* ---------------- Enhancer & DOM refs ---------------- */
 const dropEnhance = $("dropEnhance"), enhanceInput = $("enhanceInput"), enhFileInfo = $("enhFileInfo");
 const enhUpscale2x = $("enhUpscale2x"), enhUpscale4x = $("enhUpscale4x"), enhFaceEnhance = $("enhFaceEnhance");
 const enhDenoise = $("enhDenoise"), enhOCR = $("enhOCR"), enhHDR = $("enhHDR"), enhHide = $("enhHide");
@@ -91,22 +95,27 @@ const annApply = $("annApply");
 const annotatorModal = $("annotatorModal"), annotCanvas = $("annotCanvas"), annotBase = $("annotBase");
 const annotatorApply = $("annotatorApply"), annotatorCancel = $("annotatorCancel");
 
+/* fallback test image (from session container) */
+const DEFAULT_TEST_IMAGE = "/mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png";
+
 /* internal high-res canvas (natural image) */
 const enhanceCanvas = document.createElement("canvas");
 const enhanceCtx = enhanceCanvas.getContext("2d");
 let currentEnhFile = null;
 
-/* Annotation system (shared between inline annoCanvas and full annotator modal)
-   We'll use a single actionsStack that both canvases draw from.
-*/
+/* annotation data (shared across inline overlay and modal) */
 let actionsStack = [], redoStack = [];
-let inlineAnnoCtx = null, inlineW = 0, inlineH = 0;
+let inlineCtx = null, inlineW = 0, inlineH = 0;
 let annotCtx = null, annotW = 0, annotH = 0;
 let activeTool = null;
 
-/* --- load image into enhanceCanvas and set previews --- */
-async function loadEnhImage(file){
-  const url = URL.createObjectURL(file);
+/* ---------- load image into natural canvas & previews ---------- */
+async function loadEnhImage(fileOrUrl){
+  // accepts File or URL string
+  let url;
+  if(typeof fileOrUrl === "string") url = fileOrUrl;
+  else url = URL.createObjectURL(fileOrUrl);
+
   const img = new Image();
   img.src = url;
   await img.decode().catch(()=>{});
@@ -114,20 +123,20 @@ async function loadEnhImage(file){
   enhanceCanvas.height = img.naturalHeight;
   enhanceCtx.clearRect(0,0,enhanceCanvas.width,enhanceCanvas.height);
   enhanceCtx.drawImage(img, 0, 0);
-  if(enhFileInfo) enhFileInfo.textContent = `${file.name} — ${img.naturalWidth}×${img.naturalHeight}px`;
+  currentEnhFile = (typeof fileOrUrl === "string") ? null : fileOrUrl;
+  if(enhFileInfo) enhFileInfo.textContent = (currentEnhFile && currentEnhFile.name) ? `${currentEnhFile.name} — ${img.naturalWidth}×${img.naturalHeight}px` : `${img.naturalWidth}×${img.naturalHeight}px (demo)`;
   if(enhStatus) enhStatus.textContent = "Image loaded.";
-  // previews
+  // set previews
   beforeImg.src = url;
   afterImg.src = url;
   annotBase.src = url;
-  currentEnhFile = file;
   actionsStack = []; redoStack = [];
-  ensureInlineAnnoCanvas();
+  ensureInlineCanvas();
   ensureAnnotCanvas();
-  URL.revokeObjectURL(url);
+  if(typeof fileOrUrl !== "string") URL.revokeObjectURL(url);
 }
 
-/* event wiring for file input */
+/* wire file inputs */
 if(dropEnhance) dropEnhance.addEventListener("click", ()=> enhanceInput && enhanceInput.click());
 if(enhanceInput){
   enhanceInput.addEventListener("change", async e=>{
@@ -148,14 +157,14 @@ if(dropEnhance){
   });
 }
 
-/* quality UI */
+/* quality UI init */
 if(enhQuality && enhQualityVal){
   enhQuality.addEventListener("input", ()=> enhQualityVal.textContent = (parseInt(enhQuality.value)||92) + "%");
   enhQualityVal.textContent = (parseInt(enhQuality.value)||92) + "%";
 }
 
-/* ---------------- Inline annotation canvas (small overlay) ---------------- */
-function ensureInlineAnnoCanvas(){
+/* ---------------- Inline overlay canvas (preview) ---------------- */
+function ensureInlineCanvas(){
   if(!annoCanvas || !previewArea) return;
   const rect = previewArea.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
@@ -165,18 +174,19 @@ function ensureInlineAnnoCanvas(){
   annoCanvas.style.height = h + "px";
   annoCanvas.width = Math.floor(w * ratio);
   annoCanvas.height = Math.floor(h * ratio);
-  inlineAnnoCtx = annoCanvas.getContext("2d");
-  inlineAnnoCtx.setTransform(ratio,0,0,ratio,0,0);
+  inlineCtx = annoCanvas.getContext("2d");
+  inlineCtx.setTransform(ratio,0,0,ratio,0,0);
   inlineW = w; inlineH = h;
   redrawInline();
+  attachHelpTips(annoCanvas);
 }
 
-/* redraw inline annotation overlay */
+/* redraw inline overlay from actionsStack (display coords of previewArea) */
 function redrawInline(){
-  if(!inlineAnnoCtx) return;
-  inlineAnnoCtx.clearRect(0,0,inlineW,inlineH);
-  for(const a of actionsStack) drawAction(inlineAnnoCtx, a);
-  annoStateLabel.textContent = actionsStack.length ? actionsStack[actionsStack.length-1].tool : 'none';
+  if(!inlineCtx) return;
+  inlineCtx.clearRect(0,0,inlineW,inlineH);
+  for(const a of actionsStack) drawAction(inlineCtx, a, /*display*/ true);
+  annoStateLabel && (annoStateLabel.textContent = actionsStack.length ? actionsStack[actionsStack.length-1].tool : 'none');
 }
 
 /* ---------------- Annotator modal canvas (full editor) ---------------- */
@@ -196,17 +206,23 @@ function ensureAnnotCanvas(){
   annotBase.style.width = "100%";
   annotBase.style.height = "100%";
   redrawAnnot();
+  attachHelpTips(annotatorModal);
 }
 
-/* redraw annot modal canvas */
+/* redraw modal canvas from actionsStack (display coords of modal canvas) */
 function redrawAnnot(){
   if(!annotCtx) return;
   annotCtx.clearRect(0,0,annotW,annotH);
-  for(const a of actionsStack) drawAction(annotCtx, a);
+  for(const a of actionsStack) drawAction(annotCtx, a, /*display*/ true, /*modal*/ true);
 }
 
-/* drawAction - works in display coords of the canvas (x,y in pixels of display rect) */
-function drawAction(ctx, action){
+/* ---------------- drawAction (display coords) ----------------
+   action model:
+   { tool, x, y, x2, y2, color, size, points?, text? }
+   x/y are display-coords relative to the canvas they were drawn on.
+*/
+function drawAction(ctx, action, display = true){
+  // ctx uses display coordinates (already transformed for DPR)
   ctx.save();
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   ctx.strokeStyle = action.color || "#ff7a3c";
@@ -239,10 +255,14 @@ function drawAction(ctx, action){
     ctx.fillRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
     ctx.globalAlpha = 1;
   } else if(action.tool === "blur"){
-    ctx.globalAlpha = 0.6;
+    ctx.globalAlpha = 0.55;
     ctx.fillStyle = "rgba(0,0,0,0.45)";
     ctx.fillRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
     ctx.globalAlpha = 1;
+    // also draw dashed border for clarity
+    ctx.setLineDash([6,4]);
+    ctx.strokeRect(action.x, action.y, action.x2 - action.x, action.y2 - action.y);
+    ctx.setLineDash([]);
   } else if(action.tool === "free"){
     const pts = action.points || [];
     if(pts.length){
@@ -255,27 +275,32 @@ function drawAction(ctx, action){
   ctx.restore();
 }
 
-/* ---------- Inline canvas events (allow quick draw on preview overlay) ---------- */
-let drawing = false, startX=0, startY=0;
+/* ---------------- Inline overlay events (quick draw) ---------------- */
+let drawing = false, startX = 0, startY = 0;
 if(annoCanvas){
   annoCanvas.addEventListener("mousedown", (e)=>{
-    // open annotator if not active tools in inline (we keep inline for quick strokes only)
-    if(!activeTool) { return; }
+    // if no active tool, open annotator modal instead of drawing
+    if(!activeTool){
+      // open annotator for full tools
+      annotatorModal.style.display = "flex";
+      ensureAnnotCanvas();
+      return;
+    }
     drawing = true;
     const r = annoCanvas.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
     startX = x; startY = y;
     if(activeTool === "free"){
-      actionsStack.push({ tool:"free", color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||4) : 4, points:[{x,y}]});
+      actionsStack.push({ tool: "free", color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||4) : 4, points: [{x,y}] });
     } else if(activeTool === "text"){
       const txt = prompt("Enter text:");
-      if(!txt) { drawing = false; return; }
-      actionsStack.push({ tool:"text", x, y, x2:x, y2:y, color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||14) : 14, text: txt });
+      if(!txt){ drawing=false; return; }
+      actionsStack.push({ tool: "text", x, y, x2:x, y2:y, color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||14) : 14, text: txt });
       drawing = false;
-      ensureAnnotCanvas(); redrawInline(); redrawAnnot();
+      redrawInline(); ensureAnnotCanvas(); redrawAnnot();
       return;
     } else {
-      actionsStack.push({ tool: activeTool, x, y, x2:x, y2:y, color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||4) : 4 });
+      actionsStack.push({ tool: activeTool, x, y, x2: x, y2: y, color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||4) : 4 });
     }
     redrawInline();
   });
@@ -284,9 +309,9 @@ if(annoCanvas){
     if(!drawing) return;
     const r = annoCanvas.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
-    const cur = actionsStack[actionsStack.length-1];
+    const cur = actionsStack[actionsStack.length - 1];
     if(!cur) return;
-    if(cur.tool === "free") cur.points.push({x,y});
+    if(cur.tool === "free"){ cur.points.push({x,y}); }
     else { cur.x2 = x; cur.y2 = y; }
     redrawInline();
   });
@@ -296,8 +321,8 @@ if(annoCanvas){
   });
 }
 
-/* ---------- Full Annotator modal drawing (separate canvas) ---------- */
-let annotDrawing = false, annotStartX=0, annotStartY=0;
+/* ---------------- Annotator modal events (full editor) ---------------- */
+let annotDrawing = false, annotStartX = 0, annotStartY = 0;
 if(annotCanvas){
   annotCanvas.addEventListener("mousedown", (e)=>{
     if(!activeTool) return;
@@ -306,16 +331,16 @@ if(annotCanvas){
     const x = e.clientX - r.left, y = e.clientY - r.top;
     annotStartX = x; annotStartY = y;
     if(activeTool === "free"){
-      actionsStack.push({ tool:"free", color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||4) : 4, points:[{x,y}]});
+      actionsStack.push({ tool: "free", color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||4) : 4, points: [{x,y}] });
     } else if(activeTool === "text"){
       const txt = prompt("Enter text to add:");
-      if(!txt) { annotDrawing=false; return; }
-      actionsStack.push({ tool:"text", x, y, x2:x, y2:y, color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||14) : 14, text: txt });
-      annotDrawing=false;
+      if(!txt){ annotDrawing=false; return; }
+      actionsStack.push({ tool: "text", x, y, x2:x, y2:y, color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||14) : 14, text: txt });
+      annotDrawing = false;
       redrawAnnot(); redrawInline();
       return;
     } else {
-      actionsStack.push({ tool: activeTool, x, y, x2:x, y2:y, color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||4) : 4 });
+      actionsStack.push({ tool: activeTool, x, y, x2: x, y2: y, color: $("annotColor") ? $("annotColor").value : "#ff7a3c", size: $("annotSize") ? parseInt($("annotSize").value||4) : 4 });
     }
     redrawAnnot();
   });
@@ -324,99 +349,84 @@ if(annotCanvas){
     if(!annotDrawing) return;
     const r = annotCanvas.getBoundingClientRect();
     const x = e.clientX - r.left, y = e.clientY - r.top;
-    const cur = actionsStack[actionsStack.length-1];
+    const cur = actionsStack[actionsStack.length - 1];
     if(!cur) return;
-    if(cur.tool === "free") cur.points.push({x,y});
+    if(cur.tool === "free"){ cur.points.push({x,y}); }
     else { cur.x2 = x; cur.y2 = y; }
     redrawAnnot();
   });
 
   document.addEventListener("mouseup", ()=> {
-    if(annotDrawing){ annotDrawing = false; redrawAnnot(); redrawInline(); ensureInlineAnnoCanvas(); }
+    if(annotDrawing){ annotDrawing = false; redrawAnnot(); redrawInline(); ensureInlineCanvas(); }
   });
 }
 
-/* ---------- Annotator UI: toolbar buttons ---------- */
+/* ---------------- Annotator UI: toolbar buttons (modal) ---------------- */
 document.querySelectorAll(".annot-btn").forEach(bt=>{
   bt.addEventListener("click", ()=>{
     document.querySelectorAll(".annot-btn").forEach(x=>x.classList.remove("active"));
     bt.classList.add("active");
     activeTool = bt.dataset.tool || null;
-    // sync inline active tool label
-    annoStateLabel.textContent = activeTool || "none";
+    annoStateLabel && (annoStateLabel.textContent = activeTool || "none");
   });
 });
 
-/* mini annotate open button */
-on($("miniAnnotateOpen"), "click", ()=> {
-  annotatorModal.style.display = "flex";
-  ensureAnnotCanvas();
-});
+/* mini/Open buttons */
+on($("miniAnnotateOpen"), ()=> { annotatorModal.style.display = "flex"; ensureAnnotCanvas(); attachHelpTips(annotatorModal); });
+on(openAnnotatorBtn, "click", ()=> { annotatorModal.style.display = "flex"; ensureAnnotCanvas(); attachHelpTips(annotatorModal); });
 
-/* open annotator button from enhancer */
-on(openAnnotatorBtn, "click", ()=> {
-  annotatorModal.style.display = "flex";
-  ensureAnnotCanvas();
-});
-
-/* Set Hide Area: open annotator and preselect blur tool */
+/* Set Hide Area (preselect blur) */
 on(hidAreaBtn, "click", ()=> {
   annotatorModal.style.display = "flex";
   setTimeout(()=> {
-    // select blur button
     const blurBtn = Array.from(document.querySelectorAll(".annot-btn")).find(x=>x.dataset.tool === "blur");
-    if(blurBtn) { blurBtn.click(); }
+    if(blurBtn) blurBtn.click();
     ensureAnnotCanvas();
-  }, 60);
+  }, 80);
 });
 
-/* Annotator cancel / apply */
-on(annotatorCancel, "click", ()=> { annotatorModal.style.display = "none"; ensureInlineAnnoCanvas(); });
+/* Annotator cancel / apply (apply merges into inline preview but not into natural canvas) */
+on(annotatorCancel, "click", ()=> { annotatorModal.style.display = "none"; ensureInlineCanvas(); redrawInline(); });
 on(annotatorApply, "click", ()=> {
-  // close and update inline preview (annotations not merged yet)
   annotatorModal.style.display = "none";
-  ensureInlineAnnoCanvas();
+  ensureInlineCanvas();
   redrawInline();
 });
 
-/* quick actions in annotator */
+/* Undo / Clear inside modal */
 on($("annotUndo"), "click", ()=> { if(actionsStack.length) { redoStack.push(actionsStack.pop()); redrawAnnot(); redrawInline(); }});
 on($("annotClear"), "click", ()=> { actionsStack = []; redoStack = []; redrawAnnot(); redrawInline(); });
+on($("annotClearAll"), "click", ()=> { actionsStack = []; redoStack = []; redrawAnnot(); redrawInline(); });
 
-on($("annotClearAll"), "click", ()=> { actionsStack = []; redoStack=[]; redrawAnnot(); redrawInline(); });
-
-/* Apply annotations (merges to enhanceCanvas) */
+/* Apply annotations (merge to enhanceCanvas) - called from mini Apply button */
 on(annApply, "click", ()=> {
   if(!enhanceCanvas.width) return alert("No image loaded.");
   mergeAnnotationsToEnhanceCanvas();
   const q = enhQuality ? (parseInt(enhQuality.value)||92)/100 : 0.92;
   const out = enhanceCanvas.toDataURL("image/jpeg", q);
   afterImg.src = out;
-  enhStatus && (enhStatus.textContent = "Annotations applied to image.");
+  enhStatus && (enhStatus.textContent = "Annotations applied to image (merged).");
+  // clear stacks after merge
   actionsStack = []; redoStack = [];
   redrawInline(); redrawAnnot();
 });
 
-/* ---------- Preview pipeline (NON-DESTRUCTIVE) ---------- */
-function createPreviewImage(){
+/* ---------------- Preview (non-destructive) ---------------- */
+function createPreviewDataURL(){
   if(!enhanceCanvas.width) return null;
-  // draw to temp canvas at natural resolution
   const tmp = document.createElement("canvas");
-  tmp.width = enhanceCanvas.width;
-  tmp.height = enhanceCanvas.height;
+  tmp.width = enhanceCanvas.width; tmp.height = enhanceCanvas.height;
   const tctx = tmp.getContext("2d");
   tctx.drawImage(enhanceCanvas, 0, 0);
 
-  // 1) apply selected filters
+  // apply filters (OCR/HDR/Denoise) non-destructively
   let imgData = tctx.getImageData(0,0,tmp.width,tmp.height);
   if(enhOCR && enhOCR.checked) imgData = applyOCRBoost(imgData);
   if(enhHDR && enhHDR.checked) imgData = applyHDRToneMap(imgData);
   if(enhDenoise && enhDenoise.checked) imgData = applyDenoise(imgData);
-  // Upscale is destructive for preview — for preview we simulate upscale by drawing scaled canvas
-  // but to keep it fast we'll just ignore true upscale here. (If you want actual upscale, we can add.)
   tctx.putImageData(imgData, 0, 0);
 
-  // 2) apply blur regions (from actionsStack) by mapping display coords -> image natural coords
+  // apply blur regions (map display coords -> natural coords)
   if(actionsStack && actionsStack.length){
     const dispRect = previewArea.getBoundingClientRect();
     const dispW = dispRect.width, dispH = dispRect.height;
@@ -433,45 +443,41 @@ function createPreviewImage(){
           let region = tctx.getImageData(sx, sy, sw, sh);
           for(let p=0;p<5;p++) region = gaussianBlur(region);
           tctx.putImageData(region, sx, sy);
-        } catch(e){
-          console.warn("preview blur failed", e);
-        }
+        } catch(e){ console.warn("preview blur failed", e); }
       }
     }
   }
 
-  // return dataURL for preview
+  // return JPEG dataURL for preview
   return tmp.toDataURL("image/jpeg", Math.max(0.7, (parseInt(enhQuality.value)||92)/100));
 }
-
-/* Preview button (non-destructive) */
 on(enhPreviewBtn, "click", ()=>{
   if(!enhanceCanvas.width) return alert("Upload an image first!");
   enhStatus && (enhStatus.textContent = "Rendering preview...");
-  const out = createPreviewImage();
-  if(out) { afterImg.src = out; enhStatus && (enhStatus.textContent = "Preview updated."); }
+  const out = createPreviewDataURL();
+  if(out){ afterImg.src = out; enhStatus && (enhStatus.textContent = "Preview updated (non-destructive)."); }
 });
 
-/* Full Enhance & Download (destructive) */
+/* ---------------- Full Enhance & Download (destructive) ---------------- */
 on(enhRunBtn, "click", ()=>{
   if(!enhanceCanvas.width) return alert("Upload an image first!");
   enhStatus && (enhStatus.textContent = "Processing and exporting...");
   try{
-    // apply filters directly to enhanceCanvas
+    // apply filters to the natural canvas
     let imgData = enhanceCtx.getImageData(0,0,enhanceCanvas.width,enhanceCanvas.height);
     if(enhOCR && enhOCR.checked) imgData = applyOCRBoost(imgData);
     if(enhHDR && enhHDR.checked) imgData = applyHDRToneMap(imgData);
     if(enhDenoise && enhDenoise.checked) imgData = applyDenoise(imgData);
     enhanceCtx.putImageData(imgData, 0, 0);
 
-    // merge annotations (includes blur) into enhanceCanvas
+    // merge annotations (includes blur)
     mergeAnnotationsToEnhanceCanvas();
 
-    // export
+    // export file
     const q = enhQuality ? (parseInt(enhQuality.value)||92)/100 : 0.92;
     const out = enhanceCanvas.toDataURL("image/jpeg", q);
     downloadDataURL(out, (currentEnhFile && currentEnhFile.name) ? (currentEnhFile.name.replace(/\.[^/.]+$/,"") + "_enh.jpg") : "enhanced.jpg");
-    enhStatus && (enhStatus.textContent = "Enhancement complete. Downloaded.");
+    enhStatus && (enhStatus.textContent = "Enhancement complete. Download started.");
     afterImg.src = out;
   }catch(e){
     console.error("Enhance run error", e);
@@ -479,7 +485,7 @@ on(enhRunBtn, "click", ()=>{
   }
 });
 
-/* ---------- Merge annotations to enhanceCanvas (destructive merge) ---------- */
+/* ---------------- Merge annotations into natural canvas (destructive) ---------------- */
 function mergeAnnotationsToEnhanceCanvas(){
   if(!enhanceCanvas.width || !previewArea) return;
   const tmp = document.createElement("canvas");
@@ -554,13 +560,11 @@ function mergeAnnotationsToEnhanceCanvas(){
     }
   }
 
-  enhanceCtx.clearRect(0,0,enhanceCanvas.width, enhanceCanvas.height);
+  enhanceCtx.clearRect(0,0,enhanceCanvas.width,enhanceCanvas.height);
   enhanceCtx.drawImage(tmp, 0, 0);
 }
 
-/* ---------- Utilities & filters (OCR, HDR, Denoise, Blur) ---------- */
-/* NOTE: these are the same basic implementations you had; I kept them and added applyDenoise placeholder */
-
+/* ---------------- Filters & utilities ---------------- */
 function applyOCRBoost(imageData){
   const d = imageData.data;
   for(let i=0;i<d.length;i+=4){
@@ -576,36 +580,26 @@ function applyOCRBoost(imageData){
   }
   return imageData;
 }
-
 function applyHDRToneMap(imageData){
   const d = imageData.data;
   for(let i=0;i<d.length;i+=4){
-    d[i] = toneChannel(d[i]);
-    d[i+1] = toneChannel(d[i+1]);
-    d[i+2] = toneChannel(d[i+2]);
+    d[i] = toneChannel(d[i]); d[i+1] = toneChannel(d[i+1]); d[i+2] = toneChannel(d[i+2]);
   }
   return imageData;
 }
-function toneChannel(v){
-  if(v < 80) return Math.min(255, v * 1.28);
-  if(v > 200) return Math.max(0, v * 0.88);
-  return v;
-}
+function toneChannel(v){ if(v < 80) return Math.min(255, v * 1.28); if(v > 200) return Math.max(0, v * 0.88); return v; }
 
-/* simple denoise placeholder: tiny blur + contrast */
+/* very light denoise placeholder */
 function applyDenoise(imageData){
-  // apply a very light box blur pass (cheap)
   const d = imageData.data;
-  // naive mild contrast increase
   for(let i=0;i<d.length;i+=4){
-    d[i] = Math.min(255, (d[i]-128)*1.04 + 128);
-    d[i+1] = Math.min(255, (d[i+1]-128)*1.04 + 128);
-    d[i+2] = Math.min(255, (d[i+2]-128)*1.04 + 128);
+    d[i] = Math.min(255, (d[i]-128)*1.03 + 128);
+    d[i+1] = Math.min(255, (d[i+1]-128)*1.03 + 128);
+    d[i+2] = Math.min(255, (d[i+2]-128)*1.03 + 128);
   }
   return imageData;
 }
 
-/* gaussian blur: separable 5-tap (kept same) */
 function gaussianBlur(imgData){
   const w = imgData.width, h = imgData.height;
   const src = imgData.data;
@@ -613,6 +607,7 @@ function gaussianBlur(imgData){
   const out = new Uint8ClampedArray(src.length);
   const weights = [0.1201,0.2339,0.2920,0.2339,0.1201];
   const half = 2;
+  // horizontal
   for(let row=0; row<h; row++){
     for(let col=0; col<w; col++){
       let r=0,g=0,b=0,a=0;
@@ -626,6 +621,7 @@ function gaussianBlur(imgData){
       tmp[idxOut] = r; tmp[idxOut+1] = g; tmp[idxOut+2] = b; tmp[idxOut+3] = a;
     }
   }
+  // vertical
   for(let col=0; col<w; col++){
     for(let row=0; row<h; row++){
       let r=0,g=0,b=0,a=0;
@@ -653,18 +649,24 @@ function downloadDataURL(dataURL, filename="image.jpg"){
   a.remove();
 }
 
-/* ---------- helpers to keep canvases responsive ---------- */
+/* ---------------- responsive handlers ---------------- */
 window.addEventListener("resize", ()=>{
-  ensureInlineAnnoCanvas(); ensureAnnotCanvas();
+  ensureInlineCanvas(); ensureAnnotCanvas();
 });
 
-ensureInlineAnnoCanvas();
-ensureAnnotCanvas();
-
-/* keyboard escape to close modals */
+/* keyboard close */
 document.addEventListener("keydown",(e)=>{
-  if(e.key==="Escape"){ annotatorModal.style.display = "none"; }
+  if(e.key === "Escape"){
+    if(annotatorModal) annotatorModal.style.display = "none";
+  }
 });
 
-/* final default view */
-showSection(isAuthed() ? "home" : "home");
+/* ---------------- final init ---------------- */
+// load default test image so annotator UI can be tested immediately
+loadEnhImage(DEFAULT_TEST_IMAGE).catch(()=>{ /* ignore */ });
+
+// attach help tips for whole document (covers new dynamic elements)
+attachHelpTips(document);
+
+/* expose minimal debug (optional) */
+window.__MM = { actionsStack, enhanceCanvas, enhanceCtx };
