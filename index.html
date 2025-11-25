@@ -41,13 +41,13 @@
 
     <!-- HOME (TWO TOOLS) -->
     <section id="home" class="home-section" style="display:none">
-      <div class="tool-card" id="btnImage">
+      <div class="tool-card" id="btnImage" data-tip="Batch image tools (scan-only human detection)">
         <div class="icon">🖼️</div>
         <h3>Image Tools</h3>
         <p>Resize • Smart Center • Human Detection • (No ZIP)</p>
       </div>
 
-      <div class="tool-card" id="btnEnhancer">
+      <div class="tool-card" id="btnEnhancer" data-tip="AI-enhancement + annotation">
         <div class="icon">✨</div>
         <h3>AI Image Enhancer</h3>
         <p>Upscale • Sharpen • Denoise • HDR • Text clarity</p>
@@ -95,8 +95,7 @@
 
           <div class="flex-spacer"></div>
 
-          <div id="imgAiToggle" class="ai-switch" title="Smart Human Detection" data-tip="Toggle smart detection for batch actions.">
-            <div class="track"><div class="ball"></div></div>
+          <div id="imgAiToggle" class="ai-switch" title="Smart Human Detection" data-tip="Smart detection marker (read-only)"><div class="track"><div class="ball"></div></div>
             <span class="label-off">Smart Detection: OFF</span>
             <span class="label-on">Smart Detection: ON</span>
           </div>
@@ -149,19 +148,19 @@
             </div>
 
             <div class="ai-options">
-              <label class="ai-option"><input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span><div class="help-tip" data-tip="Enlarge image 2× with a simple interpolation + sharpen pass."></div></label>
+              <label class="ai-option" data-tip="Enlarge image 2× with a simple interpolation + sharpen pass."><input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span></label>
 
-              <label class="ai-option"><input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span><div class="help-tip" data-tip="Enlarge image 4× (heavier). Use only if needed."></div></label>
+              <label class="ai-option" data-tip="Enlarge image 4× (heavier). Use only if needed."><input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span></label>
 
-              <label class="ai-option"><input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span><div class="help-tip" data-tip="Apply edge-preserving sharpening for faces and UI elements."></div></label>
+              <label class="ai-option" data-tip="Apply edge-preserving sharpening for faces and UI elements."><input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span></label>
 
-              <label class="ai-option"><input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span><div class="help-tip" data-tip="Remove light noise, then apply gentle unsharp mask."></div></label>
+              <label class="ai-option" data-tip="Remove light noise, then apply gentle unsharp mask."><input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span></label>
 
-              <label class="ai-option"><input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span><div class="help-tip" data-tip="Boost contrast and clarity around small text for better legibility."></div></label>
+              <label class="ai-option" data-tip="Boost contrast and clarity around small text for better legibility."><input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span></label>
 
-              <label class="ai-option"><input type="checkbox" id="enhHDR"><span>HDR Boost (Shadows & Highlights)</span><div class="help-tip" data-tip="Lift shadows and compress highlights to reveal details across tones."></div></label>
+              <label class="ai-option" data-tip="Lift shadows and compress highlights to reveal details across tones."><input type="checkbox" id="enhHDR"><span>HDR Boost</span></label>
 
-              <label class="ai-option"><input type="checkbox" id="enhHide"><span>Object Hide / Privacy Blur</span><div class="help-tip" data-tip="Select an area to blur (faces, IDs, logos). Use Set Hide Area to define region."></div></label>
+              <label class="ai-option" data-tip="Select an area to blur (faces, IDs, logos). Use Set Hide Area to define region."><input type="checkbox" id="enhHide"><span>Object Hide / Privacy Blur</span></label>
             </div>
 
             <div class="btn-row small-row">
@@ -198,7 +197,7 @@
         <div class="panel-title">Annotate / Preview</div>
 
         <div id="previewArea" class="preview-area" aria-hidden="true">
-          <!-- before (original image) -->
+          <!-- before (original image) - using uploaded file path -->
           <img id="beforeImg" alt="Before" src="/mnt/data/ee5ca6b2-da36-420c-8359-ec00b9cba47b.png" />
           <!-- after layer (enhanced) -->
           <div id="afterLayer" class="after-layer"><img id="afterImg" alt="After" /></div>
@@ -211,14 +210,14 @@
         <!-- Annotation toolbar (Option B) -->
         <div id="annoToolbar" class="annotation-toolbar" style="display:none">
           <div class="controls-row">
-            <button class="anno-btn" data-tool="rect">Rectangle</button>
-            <button class="anno-btn" data-tool="arrow">Arrow</button>
-            <button class="anno-btn" data-tool="text">Text</button>
-            <button class="anno-btn" data-tool="highlight">Highlight</button>
-            <button class="anno-btn" data-tool="blur">Blur area</button>
-            <button class="anno-btn" data-tool="free">Freehand</button>
-            <button class="anno-btn" id="annUndo">Undo</button>
-            <button class="anno-btn" id="annClear">Clear</button>
+            <button class="anno-btn" data-tool="rect" title="Draw a rectangle">Rectangle</button>
+            <button class="anno-btn" data-tool="arrow" title="Draw an arrow">Arrow</button>
+            <button class="anno-btn" data-tool="text" title="Add text (prompts for text)">Text</button>
+            <button class="anno-btn" data-tool="highlight" title="Highlight a region">Highlight</button>
+            <button class="anno-btn" data-tool="blur" title="Mark area to blur">Blur area</button>
+            <button class="anno-btn" data-tool="free" title="Freehand drawing">Freehand</button>
+            <button class="anno-btn" id="annUndo" title="Undo last action">Undo</button>
+            <button class="anno-btn" id="annClear" title="Clear all annotations">Clear</button>
             <label class="anno-control">Color <input id="annColor" type="color" value="#ff7a3c"></label>
             <label class="anno-control">Size <input id="annSize" type="range" min="1" max="30" value="4"></label>
             <button id="annApply" class="btn primary">Apply</button>
