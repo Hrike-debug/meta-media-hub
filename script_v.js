@@ -1,9 +1,10 @@
 /* ==========================================================
-   Meta Media Hub - script_v.js (v5)
-   - Image Resizer (scan + AI toggle)
-   - AI Enhancer: Upscale, Sharpen, Denoise, OCR, HDR
-   - Object Hide with strong blur + preview
-   All client-side, no uploads.
+   Meta Media Hub - script_v.js (v1.7)
+   - Auth + Theme + Navigation
+   - Image Resizer scan (human detection)
+   - AI Enhancer: Upscale-lite, Denoise, OCR, HDR, Sharpen
+   - Object Hide Blur (relative + works after upscale)
+   - Annotation toolbar (rect / arrow / text) floating style
 ========================================================== */
 
 const $ = id => document.getElementById(id);
@@ -17,7 +18,7 @@ const pwBtn     = $("pwBtn");
 const pwMsg     = $("pwMsg");
 const statusText= $("statusText");
 
-const AUTH_KEY  = "mm_auth_v5";
+const AUTH_KEY  = "mm_auth_v7";
 const PASSWORD  = "Meta@123";
 
 function saveAuth(v){
@@ -105,9 +106,9 @@ $("backHomeFromEnhancer").addEventListener("click", ()=>showSection("home"));
 $("aboutBtn").addEventListener("click",()=> $("aboutModal").style.display="flex");
 $("closeAbout").addEventListener("click",()=> $("aboutModal").style.display="none");
 
-
 /* ==========================================================
    IMAGE RESIZER – Smart Human Detection (scan only)
+   (Resizer crop/ZIP logic can be plugged below later)
 ========================================================== */
 
 let imageFiles        = [];
@@ -227,9 +228,8 @@ async function handleNewImages(){
   update();
 })();
 
-
 /* ==========================================================
-   AI IMAGE ENHANCER – UPSCALE-AI + SHARPEN + BLUR
+   AI IMAGE ENHANCER – upscale-lite + OCR + HDR + blur
 ========================================================== */
 
 let enhanceFiles    = [];
@@ -239,9 +239,8 @@ let baseImageData   = null;
 let baseWidth       = 0;
 let baseHeight      = 0;
 
-// hide region stored as RELATIVE coords
-let hideRectPx  = null;   // current drawn rect in modal (pixels)
-let hideRectRel = null;   // normalized {xRel,yRel,wRel,hRel}
+// hide region stored as relative coords (0–1)
+let hideRectRel = null;
 
 const dropEnhance   = $("dropEnhance");
 const enhanceInput  = $("enhanceInput");
@@ -266,7 +265,7 @@ const closeHide     = $("closeHide");
 const saveHide      = $("saveHide");
 const clearHide     = $("clearHide");
 const enhStatus     = $("enhStatus");
-
+const enhProgress   = $("enhProgress");
 
 dropEnhance.addEventListener("click", ()=> enhanceInput.click());
 
@@ -295,7 +294,7 @@ async function loadEnhImage(file){
   enhStatus.textContent   = "Image loaded. Choose enhancements and run.";
 
   hideRectRel = null;
-  hideRectPx  = null;
+  enhProgress.style.width = "0%";
 
   URL.revokeObjectURL(url);
 }
@@ -304,41 +303,35 @@ enhQuality.addEventListener("input",()=>{
   enhQualityVal.textContent = enhQuality.value + "%";
 });
 
-/* ---------------------------
-   ENHANCE PIPELINE
----------------------------- */
-enhRunBtn.addEventListener("click", ()=>{
-  if(!baseImageData){
-    alert("Upload an image first!");
-    return;
-  }
+/* Build the enhanced version into a new canvas (not touching main yet) */
+function buildEnhancedCanvas(){
+  if(!baseImageData) return null;
 
-  // 1) START from original each time
-  let workCanvas = document.createElement("canvas");
+  const workCanvas = document.createElement("canvas");
   workCanvas.width  = baseWidth;
   workCanvas.height = baseHeight;
-  let workCtx = workCanvas.getContext("2d");
+  const workCtx = workCanvas.getContext("2d");
   workCtx.putImageData(baseImageData,0,0);
 
-  let imgData = workCtx.getImageData(0,0,baseWidth,baseHeight);
+  let data = workCtx.getImageData(0,0,baseWidth,baseHeight);
 
-  // 2) AI-ish filters (order: denoise → OCR → HDR → sharpen)
+  // Denoise → OCR → HDR → Sharpen
   if(enhDenoise.checked){
-    imgData = applyDenoise3x3(imgData);
+    data = applyDenoise3x3(data);
   }
   if(enhOCR.checked){
-    imgData = applyOCRBoost(imgData);
+    data = applyOCRBoost(data);
   }
   if(enhHDR.checked){
-    imgData = applyHDRToneMap(imgData);
+    data = applyHDRToneMap(data);
   }
   if(enhFaceEnh.checked){
-    imgData = applyUnsharpMask(imgData, 0.7);  // SHARPEN-PRO
+    data = applyUnsharpMask(data, 0.7);
   }
 
-  workCtx.putImageData(imgData,0,0);
+  workCtx.putImageData(data,0,0);
 
-  // 3) UPSCALE-AI (2x / 4x)
+  // UPSCALE-LITE
   let scale = 1;
   if(enhUpscale4.checked)      scale = 4;
   else if(enhUpscale2.checked) scale = 2;
@@ -346,84 +339,135 @@ enhRunBtn.addEventListener("click", ()=>{
   let finalCanvas = workCanvas;
   if(scale > 1){
     const upCanvas = document.createElement("canvas");
-    upCanvas.width  = baseWidth  * scale;
+    upCanvas.width  = baseWidth * scale;
     upCanvas.height = baseHeight * scale;
     const upCtx = upCanvas.getContext("2d");
     upCtx.imageSmoothingEnabled = true;
     upCtx.imageSmoothingQuality = "high";
-    upCtx.drawImage(workCanvas,0,0,upCanvas.width,upCanvas.height);
+    upCtx.drawImage(workCanvas,0,0,upCanvas.width, upCanvas.height);
+
+    // slight sharpen after upscale
+    const upData = upCtx.getImageData(0,0,upCanvas.width,upCanvas.height);
+    const sharp  = applyUnsharpMask(upData, 0.4);
+    upCtx.putImageData(sharp,0,0);
+
     finalCanvas = upCanvas;
   }
 
-  // 4) Copy to main enhanceCanvas
+  // apply blur region if set
+  if(enhHide.checked && hideRectRel){
+    const cw = finalCanvas.width;
+    const ch = finalCanvas.height;
+    const bx = Math.round(hideRectRel.xRel * cw);
+    const by = Math.round(hideRectRel.yRel * ch);
+    const bw = Math.round(hideRectRel.wRel * cw);
+    const bh = Math.round(hideRectRel.hRel * ch);
+    const ctx = finalCanvas.getContext("2d");
+    blurRegionOnCanvas(ctx, {x:bx,y:by,width:bw,height:bh});
+  }
+
+  return finalCanvas;
+}
+
+/* PREVIEW → before/after slider modal */
+enhPreviewBtn.addEventListener("click", ()=>{
+  if(!baseImageData){
+    alert("Upload an image first!");
+    return;
+  }
+  const finalCanvas = buildEnhancedCanvas();
+  if(!finalCanvas){
+    alert("Could not build enhanced preview.");
+    return;
+  }
+
+  // BEFORE
+  const tmpBefore = document.createElement("canvas");
+  tmpBefore.width  = baseWidth;
+  tmpBefore.height = baseHeight;
+  tmpBefore.getContext("2d").putImageData(baseImageData,0,0);
+  $("beforeImg").src = tmpBefore.toDataURL("image/jpeg",0.9);
+
+  // AFTER
+  $("afterImg").src = finalCanvas.toDataURL("image/jpeg",0.9);
+
+  $("previewTitle").textContent = "AI Enhancement Preview";
+  $("previewInfo").textContent  = `${finalCanvas.width}×${finalCanvas.height} (after processing)`;
+
+  const modal = $("previewModal");
+  modal.style.display="flex";
+  modal.setAttribute("aria-hidden","false");
+  $("afterLayer").style.width = "50%";
+  $("handle").style.left = "50%";
+});
+
+/* Close preview modal */
+$("closePreview").addEventListener("click", ()=>{
+  const modal = $("previewModal");
+  modal.style.display="none";
+  modal.setAttribute("aria-hidden","true");
+});
+
+/* slider drag */
+(function(){
+  const wrap = $("previewArea");
+  const handle = $("handle");
+  const afterLayer = $("afterLayer");
+  let dragging = false;
+
+  function setPct(p){
+    p = Math.max(0, Math.min(100,p));
+    afterLayer.style.width = p + "%";
+    handle.style.left      = p + "%";
+  }
+
+  handle.addEventListener("mousedown", ()=>{
+    dragging = true;
+    document.body.style.cursor = "ew-resize";
+  });
+  document.addEventListener("mouseup", ()=>{
+    dragging = false;
+    document.body.style.cursor = "";
+  });
+  document.addEventListener("mousemove", e=>{
+    if(!dragging) return;
+    const rect = wrap.getBoundingClientRect();
+    const pct  = ((e.clientX - rect.left) / rect.width) * 100;
+    setPct(pct);
+  });
+})();
+
+/* RUN ENHANCE & DOWNLOAD + send to annotation */
+enhRunBtn.addEventListener("click", ()=>{
+  if(!baseImageData){
+    alert("Upload an image first!");
+    return;
+  }
+  const finalCanvas = buildEnhancedCanvas();
+  if(!finalCanvas){
+    alert("Could not build enhanced image.");
+    return;
+  }
+
+  enhProgress.style.width = "90%";
   enhanceCanvas.width  = finalCanvas.width;
   enhanceCanvas.height = finalCanvas.height;
   enhanceCtx.drawImage(finalCanvas,0,0);
 
-  // 5) Apply blur region (Object Hide) using RELATIVE coords
-  if(enhHide.checked && hideRectRel){
-    const cw = enhanceCanvas.width;
-    const ch = enhanceCanvas.height;
-    const x  = Math.round(hideRectRel.xRel * cw);
-    const y  = Math.round(hideRectRel.yRel * ch);
-    const w  = Math.round(hideRectRel.wRel * cw);
-    const h  = Math.round(hideRectRel.hRel * ch);
-
-    blurRegionOnCanvas(enhanceCtx, {x, y, width:w, height:h});
-  }
-
-  // 6) Export
-  const q = (parseInt(enhQuality.value) || 92) / 100;
+  const q = (parseInt(enhQuality.value) || 92)/100;
   const outUrl = enhanceCanvas.toDataURL("image/jpeg", q);
   download(outUrl, "enhanced.jpg");
-  enhStatus.textContent = "Enhancement complete. File downloaded.";
+  enhStatus.textContent="Enhancement complete. File downloaded.";
+  enhProgress.style.width = "100%";
+
+  // push to annotation view
+  initAnnotFromEnhance();
 });
-
-if(enhPreviewBtn){
-  enhPreviewBtn.addEventListener("click", ()=>{
-    if(!enhanceCanvas.width){
-      alert("Upload an image first!");
-      return;
-    }
-
-    // BEFORE
-    const beforeUrl = enhanceCanvas.toDataURL("image/jpeg", 0.92);
-    $("beforeImg").src = beforeUrl;
-
-    // AFTER (temporary process preview copy)
-    let previewData = enhanceCtx.getImageData(0,0,enhanceCanvas.width,enhanceCanvas.height);
-
-    if(enhOCR.checked) previewData = applyOCRBoost(previewData);
-    if(enhHDR.checked) previewData = applyHDRToneMap(previewData);
-    enhanceCtx.putImageData(previewData,0,0);
-
-    $("afterImg").src = enhanceCanvas.toDataURL("image/jpeg", 0.92);
-
-    // Reset canvas to original
-    loadEnhImage(enhanceFiles[0]);
-
-    // OPEN MODAL
-    const modal = $("previewModal");
-    modal.style.display = "flex";
-    modal.setAttribute("aria-hidden","false");
-
-    // set slider to 50-50
-    $("afterLayer").style.width = "50%";
-    $("handle").style.left = "50%";
-  });
-}
-
-$("closePreview").addEventListener("click", ()=>{
-  $("previewModal").style.display = "none";
-});
-
-
 
 /* ---------------------------
    FILTERS
 ---------------------------- */
 
-/* OCR BOOST (E) */
 function applyOCRBoost(imageData){
   const d = imageData.data;
   for(let i=0;i<d.length;i+=4){
@@ -436,7 +480,6 @@ function applyOCRBoost(imageData){
   return imageData;
 }
 
-/* HDR Tone Map (F) */
 function applyHDRToneMap(imageData){
   const d = imageData.data;
   for(let i=0;i<d.length;i+=4){
@@ -447,19 +490,18 @@ function applyHDRToneMap(imageData){
   return imageData;
 }
 function tone(v){
-  if(v < 100) return Math.min(255, v * 1.25); // lift shadows
-  if(v > 180) return v * 0.85;                // compress highlights
+  if(v < 100) return Math.min(255, v * 1.25);
+  if(v > 180) return v * 0.85;
   return v;
 }
 
-/* DENOISE 3×3 (soft) */
+/* Soft denoise 3x3 */
 function applyDenoise3x3(imageData){
   const w = imageData.width;
   const h = imageData.height;
   const src = imageData.data;
   const out = new Uint8ClampedArray(src.length);
-
-  const idx = (x,y)=> ((y*w + x) * 4);
+  const idx = (x,y)=> ((y*w + x)*4);
 
   for(let y=0;y<h;y++){
     for(let x=0;x<w;x++){
@@ -482,17 +524,18 @@ function applyDenoise3x3(imageData){
       out[o+3] = src[o+3];
     }
   }
-
   imageData.data.set(out);
   return imageData;
 }
 
-/* SHARPEN-PRO: Unsharp Mask */
+/* Unsharp mask */
 function applyUnsharpMask(imageData, amount){
   const w = imageData.width;
   const h = imageData.height;
   const src = imageData.data;
-  const blur = applyDenoise3x3(new ImageData(new Uint8ClampedArray(src),w,h)).data;
+  const blurData = new ImageData(new Uint8ClampedArray(src), w, h);
+  applyDenoise3x3(blurData);
+  const blur = blurData.data;
   const out = new Uint8ClampedArray(src.length);
 
   for(let i=0;i<src.length;i+=4){
@@ -513,153 +556,23 @@ function applyUnsharpMask(imageData, amount){
   return imageData;
 }
 
+/* STRONG BLUR REGION (object hide) */
 
-/* ==========================================================
-   OBJECT HIDE – blur region + preview
-========================================================== */
-
-hideAreaBtn.addEventListener("click", ()=>{
-  if(!baseImageData){
-    alert("Upload an image first!");
-    return;
-  }
-  hideModal.style.display="flex";
-  // base preview
-  const tmpCanvas = document.createElement("canvas");
-  tmpCanvas.width  = baseWidth;
-  tmpCanvas.height = baseHeight;
-  tmpCanvas.getContext("2d").putImageData(baseImageData,0,0);
-  hidePreview.src = tmpCanvas.toDataURL("image/jpeg",0.9);
-
-  // reset rect UI
-  if(hideRectRel){
-    // we'll draw based on rel once user starts dragging again
-    hideRect.style.display = "none";
-  } else {
-    hideRect.style.display = "none";
-  }
-});
-
-let draggingHide=false, startHX=0, startHY=0;
-
-hideCanvas.addEventListener("mousedown", e=>{
-  if(!enhHide.checked) return;
-  draggingHide = true;
-  const rect = hideCanvas.getBoundingClientRect();
-  startHX = e.clientX - rect.left;
-  startHY = e.clientY - rect.top;
-
-  hideRectPx = { x:startHX, y:startHY, width:0, height:0 };
-  hideRect.style.display="block";
-});
-
-hideCanvas.addEventListener("mousemove", e=>{
-  if(!draggingHide || !hideRectPx) return;
-  const rect = hideCanvas.getBoundingClientRect();
-  const curX = e.clientX - rect.left;
-  const curY = e.clientY - rect.top;
-
-  hideRectPx.width  = curX - hideRectPx.x;
-  hideRectPx.height = curY - hideRectPx.y;
-
-  drawHideRectPx();
-});
-
-document.addEventListener("mouseup", ()=>{
-  if(!draggingHide) return;
-  draggingHide = false;
-  updateHideRectRel();
-  updateHidePreviewBlur();   // LIVE-ish blur preview in modal
-});
-
-function drawHideRectPx(){
-  if(!hideRectPx) return;
-  hideRect.style.left   = Math.min(hideRectPx.x, hideRectPx.x + hideRectPx.width) + "px";
-  hideRect.style.top    = Math.min(hideRectPx.y, hideRectPx.y + hideRectPx.height) + "px";
-  hideRect.style.width  = Math.abs(hideRectPx.width) + "px";
-  hideRect.style.height = Math.abs(hideRectPx.height) + "px";
-}
-
-// convert pixel rect → relative (0–1) rect
-function updateHideRectRel(){
-  if(!hideRectPx) return;
-  const cw = hideCanvas.clientWidth;
-  const ch = hideCanvas.clientHeight;
-  if(!cw || !ch) return;
-
-  const x0 = Math.min(hideRectPx.x, hideRectPx.x + hideRectPx.width);
-  const y0 = Math.min(hideRectPx.y, hideRectPx.y + hideRectPx.height);
-  const w  = Math.abs(hideRectPx.width);
-  const h  = Math.abs(hideRectPx.height);
-
-  hideRectRel = {
-    xRel: x0 / cw,
-    yRel: y0 / ch,
-    wRel: w  / cw,
-    hRel: h  / ch
-  };
-}
-
-// LIVE-ish preview blur inside hide modal
-function updateHidePreviewBlur(){
-  if(!hideRectRel || !baseImageData) return;
-
-  const tempCanvas = document.createElement("canvas");
-  tempCanvas.width  = baseWidth;
-  tempCanvas.height = baseHeight;
-  const tctx = tempCanvas.getContext("2d");
-  tctx.putImageData(baseImageData,0,0);
-
-  const bx = Math.round(hideRectRel.xRel * baseWidth);
-  const by = Math.round(hideRectRel.yRel * baseHeight);
-  const bw = Math.round(hideRectRel.wRel * baseWidth);
-  const bh = Math.round(hideRectRel.hRel * baseHeight);
-
-  blurRegionOnCanvas(tctx, {x:bx,y:by,width:bw,height:bh});
-
-  hidePreview.src = tempCanvas.toDataURL("image/jpeg",0.9);
-}
-
-closeHide.addEventListener("click", ()=>{
-  hideModal.style.display="none";
-});
-
-clearHide.addEventListener("click", ()=>{
-  hideRectPx  = null;
-  hideRectRel = null;
-  hideRect.style.display="none";
-  // reset preview to base
-  if(baseImageData){
-    const tmp = document.createElement("canvas");
-    tmp.width=baseWidth; tmp.height=baseHeight;
-    tmp.getContext("2d").putImageData(baseImageData,0,0);
-    hidePreview.src = tmp.toDataURL("image/jpeg",0.9);
-  }
-});
-
-saveHide.addEventListener("click", ()=>{
-  // rect already saved in hideRectRel
-  hideModal.style.display="none";
-});
-
-
-/* STRONG MULTI-PASS BLUR for hide region */
 function blurRegionOnCanvas(ctx, box){
   if(!box) return;
   let {x,y,width,height} = box;
   if(width<=0 || height<=0) return;
 
-  // normalize just in case negative width/height slipped in
   const x0 = Math.min(x, x+width);
   const y0 = Math.min(y, y+height);
   const w  = Math.abs(width);
   const h  = Math.abs(height);
 
   let region = ctx.getImageData(x0,y0,w,h);
-  const passes = 7; // heavier blur
+  const passes = 7;
 
   for(let i=0;i<passes;i++){
-    region = gaussianBlur(region, w, h);
+    region = gaussianBlur(region,w,h);
   }
   ctx.putImageData(region,x0,y0);
 }
@@ -670,7 +583,6 @@ function gaussianBlur(imgData,w,h){
   const src=imgData.data;
   const tmp = new Uint8ClampedArray(src);
 
-  // horizontal blur
   for(let y=0;y<h;y++){
     for(let x=0;x<w;x++){
       let r=0,g=0,b=0;
@@ -691,10 +603,286 @@ function gaussianBlur(imgData,w,h){
   return imgData;
 }
 
+/* --------------------------------------------------
+   OBJECT HIDE – Modal to select area (relative coords)
+-------------------------------------------------- */
+
+hideAreaBtn.addEventListener("click", ()=>{
+  if(!baseImageData){
+    alert("Upload an image first!");
+    return;
+  }
+  hideModal.style.display="flex";
+
+  const tmp = document.createElement("canvas");
+  tmp.width  = baseWidth;
+  tmp.height = baseHeight;
+  tmp.getContext("2d").putImageData(baseImageData,0,0);
+  hidePreview.src = tmp.toDataURL("image/jpeg",0.9);
+  hideRect.style.display="none";
+});
+
+let draggingHide=false, startHX=0, startHY=0;
+let hideRectPx = null;
+
+hideCanvas.addEventListener("mousedown", e=>{
+  if(!enhHide.checked) return;
+  draggingHide = true;
+  const rect = hideCanvas.getBoundingClientRect();
+  startHX = e.clientX - rect.left;
+  startHY = e.clientY - rect.top;
+  hideRectPx = {x:startHX,y:startHY,width:0,height:0};
+  hideRect.style.display="block";
+});
+
+hideCanvas.addEventListener("mousemove", e=>{
+  if(!draggingHide || !hideRectPx) return;
+  const rect = hideCanvas.getBoundingClientRect();
+  const curX = e.clientX - rect.left;
+  const curY = e.clientY - rect.top;
+  hideRectPx.width  = curX - hideRectPx.x;
+  hideRectPx.height = curY - hideRectPx.y;
+
+  const x0 = Math.min(hideRectPx.x, hideRectPx.x + hideRectPx.width);
+  const y0 = Math.min(hideRectPx.y, hideRectPx.y + hideRectPx.height);
+  const w  = Math.abs(hideRectPx.width);
+  const h  = Math.abs(hideRectPx.height);
+
+  hideRect.style.left   = x0 + "px";
+  hideRect.style.top    = y0 + "px";
+  hideRect.style.width  = w  + "px";
+  hideRect.style.height = h  + "px";
+});
+
+document.addEventListener("mouseup", ()=>{
+  if(!draggingHide) return;
+  draggingHide=false;
+  updateHideRelFromPx();
+});
+
+function updateHideRelFromPx(){
+  if(!hideRectPx) return;
+  const cw = hideCanvas.clientWidth;
+  const ch = hideCanvas.clientHeight;
+  const x0 = Math.min(hideRectPx.x, hideRectPx.x + hideRectPx.width);
+  const y0 = Math.min(hideRectPx.y, hideRectPx.y + hideRectPx.height);
+  const w  = Math.abs(hideRectPx.width);
+  const h  = Math.abs(hideRectPx.height);
+
+  hideRectRel = {
+    xRel: x0 / cw,
+    yRel: y0 / ch,
+    wRel: w  / cw,
+    hRel: h  / ch
+  };
+}
+
+closeHide.addEventListener("click", ()=> hideModal.style.display="none");
+clearHide.addEventListener("click", ()=>{
+  hideRectRel = null;
+  hideRectPx  = null;
+  hideRect.style.display="none";
+});
+saveHide.addEventListener("click", ()=> hideModal.style.display="none");
+
+/* --------------------------------------------------
+   ANNOTATION TOOLBAR (rect / arrow / text)
+-------------------------------------------------- */
+
+const annotCanvas   = $("annotCanvas");
+const annotCtx      = annotCanvas.getContext("2d");
+const annotEmptyMsg = $("annotEmptyMsg");
+const toolRectBtn   = $("toolRect");
+const toolArrowBtn  = $("toolArrow");
+const toolTextBtn   = $("toolText");
+const annotClearBtn = $("annotClear");
+const annotApplyBtn = $("annotApply");
+
+let annotBaseImg = null;
+let annotShapes  = [];
+let annotCurrentTool = "rect";
+let annotDrawing = false;
+let annotStartX  = 0;
+let annotStartY  = 0;
+let annotTempShape = null;
+
+// scale from annotation canvas space → enhanceCanvas space
+let annotScaleX = 1;
+let annotScaleY = 1;
+
+function initAnnotFromEnhance(){
+  if(!enhanceCanvas.width){
+    annotEmptyMsg.style.display="flex";
+    return;
+  }
+  annotEmptyMsg.style.display="none";
+
+  const maxW = 600;
+  const cw   = enhanceCanvas.width;
+  const ch   = enhanceCanvas.height;
+  const scale = cw > maxW ? maxW / cw : 1;
+
+  annotCanvas.width  = cw * scale;
+  annotCanvas.height = ch * scale;
+  annotScaleX = cw / annotCanvas.width;
+  annotScaleY = ch / annotCanvas.height;
+
+  annotBaseImg = new Image();
+  annotBaseImg.onload = ()=> redrawAnnotations();
+  annotBaseImg.src = enhanceCanvas.toDataURL("image/jpeg",0.9);
+  annotShapes = [];
+}
+
+function setTool(tool){
+  annotCurrentTool = tool;
+  [toolRectBtn, toolArrowBtn, toolTextBtn].forEach(btn=>btn.classList.remove("active"));
+  if(tool==="rect")  toolRectBtn.classList.add("active");
+  if(tool==="arrow") toolArrowBtn.classList.add("active");
+  if(tool==="text")  toolTextBtn.classList.add("active");
+}
+
+toolRectBtn.addEventListener("click", ()=>setTool("rect"));
+toolArrowBtn.addEventListener("click", ()=>setTool("arrow"));
+toolTextBtn.addEventListener("click", ()=>setTool("text"));
+
+annotCanvas.addEventListener("mousedown", e=>{
+  if(!annotBaseImg) return;
+  const rect = annotCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if(annotCurrentTool === "text"){
+    const txt = prompt("Enter label text:");
+    if(txt){
+      annotShapes.push({type:"text", x, y, text:txt});
+      redrawAnnotations();
+    }
+    return;
+  }
+
+  annotDrawing = true;
+  annotStartX = x;
+  annotStartY = y;
+  annotTempShape = null;
+});
+
+annotCanvas.addEventListener("mousemove", e=>{
+  if(!annotDrawing || !annotBaseImg) return;
+  const rect = annotCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if(annotCurrentTool === "rect"){
+    annotTempShape = {type:"rect", x1:annotStartX, y1:annotStartY, x2:x, y2:y};
+  } else if(annotCurrentTool === "arrow"){
+    annotTempShape = {type:"arrow", x1:annotStartX, y1:annotStartY, x2:x, y2:y};
+  }
+  redrawAnnotations();
+});
+
+document.addEventListener("mouseup", ()=>{
+  if(!annotDrawing) return;
+  annotDrawing = false;
+  if(annotTempShape){
+    annotShapes.push(annotTempShape);
+    annotTempShape = null;
+    redrawAnnotations();
+  }
+});
+
+annotClearBtn.addEventListener("click", ()=>{
+  annotShapes = [];
+  annotTempShape = null;
+  redrawAnnotations();
+});
+
+annotApplyBtn.addEventListener("click", ()=>{
+  if(!annotBaseImg || !enhanceCanvas.width){
+    alert("Nothing to apply yet. Run Enhance first.");
+    return;
+  }
+  const ctx = enhanceCtx;
+
+  annotShapes.forEach(shape=>{
+    drawShapeOnCtx(ctx, shape, annotScaleX, annotScaleY);
+  });
+
+  // refresh base image and annotations to match updated enhanceCanvas
+  initAnnotFromEnhance();
+  alert("Annotations applied to enhanced image.");
+});
+
+function redrawAnnotations(){
+  annotCtx.clearRect(0,0,annotCanvas.width,annotCanvas.height);
+  if(annotBaseImg && annotBaseImg.complete){
+    annotCtx.drawImage(annotBaseImg,0,0,annotCanvas.width,annotCanvas.height);
+  }
+  annotShapes.forEach(shape=> drawShapeOnCtx(annotCtx, shape, 1, 1));
+  if(annotTempShape){
+    drawShapeOnCtx(annotCtx, annotTempShape, 1, 1);
+  }
+}
+
+function drawShapeOnCtx(ctx, shape, sx, sy){
+  ctx.save();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(255,180,120,0.95)";
+  ctx.fillStyle   = "rgba(255,180,120,0.20)";
+  ctx.font        = "14px system-ui";
+
+  if(shape.type === "rect"){
+    const x = Math.min(shape.x1, shape.x2) * sx;
+    const y = Math.min(shape.y1, shape.y2) * sy;
+    const w = Math.abs(shape.x2 - shape.x1) * sx;
+    const h = Math.abs(shape.y2 - shape.y1) * sy;
+    ctx.fillRect(x,y,w,h);
+    ctx.strokeRect(x,y,w,h);
+  }
+
+  if(shape.type === "arrow"){
+    const x1 = shape.x1 * sx;
+    const y1 = shape.y1 * sy;
+    const x2 = shape.x2 * sx;
+    const y2 = shape.y2 * sy;
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.lineTo(x2,y2);
+    ctx.stroke();
+
+    const angle = Math.atan2(y2-y1, x2-x1);
+    const headLen = 10;
+    ctx.beginPath();
+    ctx.moveTo(x2,y2);
+    ctx.lineTo(x2 - headLen*Math.cos(angle - Math.PI/6),
+               y2 - headLen*Math.sin(angle - Math.PI/6));
+    ctx.lineTo(x2 - headLen*Math.cos(angle + Math.PI/6),
+               y2 - headLen*Math.sin(angle + Math.PI/6));
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  if(shape.type === "text"){
+    const x = shape.x * sx;
+    const y = shape.y * sy;
+    const padding = 4;
+    const metrics = ctx.measureText(shape.text);
+    const w = metrics.width + padding*2;
+    const h = 18;
+    ctx.fillStyle = "rgba(0,0,0,0.70)";
+    ctx.fillRect(x,y-h,w,h);
+    ctx.strokeStyle = "rgba(255,180,120,0.9)";
+    ctx.strokeRect(x,y-h,w,h);
+    ctx.fillStyle = "rgba(255,220,200,1)";
+    ctx.fillText(shape.text, x+padding, y-4);
+  }
+
+  ctx.restore();
+}
 
 /* ---------------------------
    UTILS
 ---------------------------- */
+
 function download(url,name){
   const a=document.createElement("a");
   a.href=url;
@@ -702,5 +890,4 @@ function download(url,name){
   a.click();
 }
 
-/* Default view after unlock is handled above */
-
+/* Default view is controlled by auth */
