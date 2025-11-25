@@ -366,6 +366,10 @@ input[type="file"] {
   margin-top:16px;
 }
 
+.small-row {
+  margin-top:10px;
+}
+
 /* Progress */
 
 .progress {
@@ -693,7 +697,7 @@ input[type="file"] {
   cursor:ew-resize;
 }
 
-/* Focus canvas */
+/* Focus canvas (reused for hide area) */
 
 .focus-canvas {
   position:relative;
