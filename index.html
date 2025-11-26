@@ -1,158 +1,110 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Meta Media Hub — Image Suite (Split Slider Annotator)</title>
-
-<link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Meta Media Hub</title>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 
 <body>
 <div class="app-wrap">
 
-  <!-- ================= TOP BAR ================= -->
+  <!-- TOP BAR -->
   <header class="topbar">
     <div class="brand">
       <div class="logo">MM</div>
       <div>
-        <h1 style="margin:0;font-size:18px">Meta Media Hub</h1>
+        <h1>Meta Media Hub</h1>
         <div class="tagline">Internal image toolkit for META e-learning</div>
       </div>
     </div>
     <div class="right">
-      <button id="themeBtn" class="about-btn">🎨</button>
-      <button id="aboutBtn" class="about-btn">i</button>
-      <button id="themeToggle" class="about-btn">🌓</button>
+      <button class="about-btn">🎨</button>
+      <button class="about-btn">i</button>
+      <button class="about-btn">🌓</button>
       <span id="statusText" class="status">Locked</span>
     </div>
   </header>
 
-  <!-- ================= PASSWORD MODAL ================= -->
-  <div id="pwModal" class="modal" style="display:flex">
-    <div class="modal-panel pw-panel" style="max-width:380px">
-      <h2>Enter Password</h2>
-      <p class="small-muted">Unlock the Meta Media Hub</p>
-      <input id="pwInput" class="input" type="password" placeholder="Password" style="width:100%;margin-top:8px"/>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button id="pwBtn" class="btn primary" style="flex:1">Unlock</button>
-      </div>
-      <p id="pwMsg" class="small-muted" style="color:#ff9090;margin-top:8px;min-height:18px"></p>
+  <!-- PASSWORD MODAL -->
+  <div id="pwModal" class="modal">
+    <div class="modal-panel pw-panel">
+      <h2>Secure Access</h2>
+      <p class="small-muted">Enter Password to Continue</p>
+      <input id="pwInput" class="input" type="password" placeholder="Password"/>
+      <button id="pwBtn" class="btn primary full">Unlock</button>
+      <div id="pwMsg" class="error-msg"></div>
     </div>
   </div>
 
-  <!-- ================= HOME ================= -->
-  <section id="home" class="home-section" style="display:none">
-
-    <!-- ✅ Image Tools now does NOTHING (no alert, no block) -->
+  <!-- HOME -->
+  <section id="home" class="home-section">
     <div class="tool-card panel" id="btnImage">
       <div class="icon">🖼️</div>
-      <h3 style="margin:6px 0">Image Tools</h3>
-      <p class="small-muted">Resize • Smart Center • Human Detection</p>
+      <h3>Image Tools</h3>
+      <p class="small-muted">Resize • Smart Center • Detection</p>
     </div>
 
     <div class="tool-card panel" id="btnEnhancer">
       <div class="icon">✨</div>
-      <h3 style="margin:6px 0">AI Image Enhancer</h3>
-      <p class="small-muted">Upscale • Sharpen • Denoise • HDR • Text clarity</p>
+      <h3>AI Image Enhancer</h3>
+      <p class="small-muted">Upscale • Sharpen • Annotate</p>
     </div>
-
   </section>
 
-  <!-- ================= ENHANCER ================= -->
-  <section id="enhancerSection" class="panel" style="display:none">
+  <!-- ENHANCER -->
+  <section id="enhancerSection" class="panel">
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="nav-row">
       <div>
-        <h2 style="margin:0">AI Image Enhancer</h2>
-        <div class="small-muted">Improve quality: upscale, denoise, HDR & text clarity.</div>
+        <h2>AI Image Enhancer</h2>
+        <div class="small-muted">Upload, annotate & export</div>
       </div>
       <button id="backHomeFromEnhancer" class="btn ghost">← Home</button>
     </div>
 
-    <div style="display:flex;gap:18px;align-items:flex-start">
+    <div class="layout">
 
-      <!-- LEFT -->
-      <div style="flex:1">
-        <div class="panel">
-          <h4>Upload Image</h4>
-          <div id="dropEnhance" class="dropzone">Click or drag & drop a single image</div>
-          <input id="enhanceInput" type="file" accept="image/*" style="display:none">
-          <div id="enhFileInfo" class="small-muted">No image selected.</div>
-        </div>
+      <div class="panel">
+        <h4>Upload</h4>
+        <div id="dropEnhance" class="dropzone">Click or Drop Image</div>
+        <input id="enhanceInput" type="file" accept="image/*" hidden>
+        <div id="enhFileInfo" class="small-muted">No file loaded</div>
       </div>
 
-      <!-- RIGHT -->
-      <div style="width:360px">
-        <div class="panel">
-          <h4>Enhancement Options</h4>
-
-          <label><input type="checkbox" id="enhUpscale2x"> Upscale ×2</label><br>
-          <label><input type="checkbox" id="enhUpscale4x"> Upscale ×4</label><br>
-          <label><input type="checkbox" id="enhFaceEnhance"> Boost Faces & Detail</label><br>
-          <label><input type="checkbox" id="enhDenoise"> Denoise & Sharpen</label><br>
-          <label><input type="checkbox" id="enhOCR"> Text / OCR Clarity</label><br>
-          <label><input type="checkbox" id="enhHDR"> HDR Boost</label><br>
-          <label><input type="checkbox" id="enhHide"> Object Hide / Privacy Blur</label><br>
-
-          <div style="margin-top:10px">
-            <button id="hideAreaBtn" class="btn ghost">Set Hide Area</button>
-            <button id="openAnnotatorBtn" class="btn ghost">Annotate</button>
-          </div>
-
-          <div style="margin-top:12px;">
-            <label>Output Quality <span id="enhQualityVal">92%</span></label>
-            <input id="enhQuality" type="range" min="70" max="100" value="92">
-          </div>
-
-          <div style="margin-top:12px">
-            <button id="enhPreviewBtn" class="btn ghost">Preview</button>
-            <button id="enhRunBtn" class="btn primary">Enhance & Download</button>
-          </div>
-
-          <div id="enhStatus" class="small-muted" style="margin-top:8px">Waiting for image.</div>
-        </div>
+      <div class="panel">
+        <h4>Actions</h4>
+        <button id="openAnnotatorBtn" class="btn ghost">Annotate</button>
+        <button id="enhPreviewBtn" class="btn ghost">Preview</button>
+        <button id="enhRunBtn" class="btn primary">Download</button>
+        <div id="enhStatus" class="small-muted">Waiting...</div>
       </div>
+
     </div>
 
-    <!-- ================= SPLIT PREVIEW ================= -->
     <div class="split-wrap">
       <div id="splitContainer" class="split-container">
-
-        <div class="split-before">
-          <!-- ✅ NO default src -->
-          <img id="beforeImg" alt="Before">
-        </div>
-
+        <img id="beforeImg">
         <div id="afterClip" class="split-after">
-          <!-- ✅ NO default src -->
-          <img id="afterImg" alt="After">
+          <img id="afterImg">
         </div>
-
-        <canvas id="splitAnnotCanvas" class="annotation-canvas"></canvas>
+        <canvas id="splitAnnotCanvas"></canvas>
         <div id="splitHandle" class="split-handle"><div class="bar"></div></div>
-
       </div>
 
-      <div style="display:flex;justify-content:space-between;margin-top:10px">
-        <div class="annotation-toolbar">
-          <button class="btn ghost annot-btn" data-tool="rect">Rect</button>
-          <button class="btn ghost annot-btn" data-tool="arrow">Arrow</button>
-          <button class="btn ghost annot-btn" data-tool="text">Text</button>
-          <button class="btn ghost annot-btn" data-tool="highlight">Highlight</button>
-          <button class="btn ghost annot-btn" data-tool="blur">Blur</button>
-          <button class="btn ghost annot-btn" data-tool="free">Free</button>
-          <button id="annotUndo" class="btn ghost">Undo</button>
-          <button id="annotClear" class="btn ghost">Clear</button>
-        </div>
-
+      <div class="annotation-toolbar">
+        <button class="annot-btn" data-tool="rect">Rect</button>
+        <button class="annot-btn" data-tool="arrow">Arrow</button>
+        <button class="annot-btn" data-tool="text">Text</button>
+        <button class="annot-btn" data-tool="highlight">Highlight</button>
+        <button class="annot-btn" data-tool="blur">Blur</button>
         <button id="miniApply" class="btn primary">Apply → After</button>
       </div>
-
     </div>
   </section>
 
-  <footer class="small-muted" style="text-align:center;margin-top:18px">
+  <footer class="small-muted footer">
     Created by Mukesh Yadav • META E-learning Team
   </footer>
 
