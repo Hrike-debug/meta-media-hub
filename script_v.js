@@ -63,14 +63,11 @@ $("backHomeFromEnhancer").addEventListener("click", () => showSection("home"));
 let imageFiles = [];
 let imageDetectionMap = {};
 let cocoModel = null;
-let manualFocusPoint = null; // ✅ ONLY when NO HUMAN
+let manualFocusPoint = null;
 
 const dropImage = $("dropImage");
 const imageInput = $("imageInput");
 const imageFileList = $("imageFileList");
-const smartBanner = $("smartBanner");
-const bannerIcon = $("bannerIcon");
-const bannerText = $("bannerText");
 const imgStatus = $("imgStatus");
 const imgAiToggle = $("imgAiToggle");
 
@@ -79,6 +76,7 @@ async function loadCoco() {
   cocoModel = await cocoSsd.load();
   return cocoModel;
 }
+
 async function detectPerson(imgEl) {
   await loadCoco();
   const preds = await cocoModel.detect(imgEl);
@@ -118,7 +116,7 @@ imageInput.addEventListener("change", async e => {
   await handleNewImages();
 });
 
-/* ================= MANUAL FOCUS SET ================= */
+/* ================= MANUAL FOCUS ================= */
 
 const previewBefore = $("beforeImg");
 
@@ -133,10 +131,11 @@ if (previewBefore) {
     }
 
     const rect = previewBefore.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
+    manualFocusPoint = {
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height
+    };
 
-    manualFocusPoint = { x, y };
     alert("Manual focus set.");
   });
 }
@@ -154,60 +153,62 @@ async function processImages(previewOnly = false) {
     img.src = url;
     await img.decode();
 
-    const w = img.width;
-    const h = img.height;
+    const targetW = parseInt($("imgWidth").value) || img.width;
+    const targetH = parseInt($("imgHeight").value) || img.height;
 
     const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
+    canvas.width = targetW;
+    canvas.height = targetH;
     const ctx = canvas.getContext("2d");
 
-    const scale = Math.max(w / img.width, h / img.height);
-    const sw = img.width * scale;
-    const sh = img.height * scale;
-    const offsetX = (w - sw) / 2;
-    const offsetY = (h - sh) / 2;
+    ctx.clearRect(0, 0, targetW, targetH);
 
     const imgW = img.width;
     const imgH = img.height;
 
+    /* ✅ HUMAN SAFE MODE (CONTAIN) */
     if (imageDetectionMap[file.name] === "person") {
-      const safeScale = Math.min(w / imgW, h / imgH);
-      const safeW = imgW * safeScale;
-      const safeH = imgH * safeScale;
-      const ox = (w - safeW) / 2;
-      const oy = (h - safeH) / 2;
-      ctx.drawImage(img, ox, oy, safeW, safeH);
-    } 
+      const scale = Math.min(targetW / imgW, targetH / imgH);
+      const w = imgW * scale;
+      const h = imgH * scale;
+      const ox = (targetW - w) / 2;
+      const oy = (targetH - h) / 2;
+      ctx.drawImage(img, ox, oy, w, h);
+    }
+
+    /* ✅ MANUAL FOCUS MODE (ONLY WHEN NO HUMAN) */
     else if (manualFocusPoint) {
-      const fx = manualFocusPoint.x * imgW;
-      const fy = manualFocusPoint.y * imgH;
+      const scale = Math.max(targetW / imgW, targetH / imgH);
+      const w = imgW * scale;
+      const h = imgH * scale;
 
-      const sx = fx - w / 2;
-      const sy = fy - h / 2;
+      const fx = manualFocusPoint.x * w;
+      const fy = manualFocusPoint.y * h;
 
-      ctx.drawImage(
-        img,
-        sx, sy,
-        w, h,
-        0, 0,
-        w, h
-      );
-    } 
+      const ox = targetW / 2 - fx;
+      const oy = targetH / 2 - fy;
+
+      ctx.drawImage(img, ox, oy, w, h);
+    }
+
+    /* ✅ DEFAULT CENTER COVER */
     else {
-      ctx.drawImage(img, offsetX, offsetY, sw, sh);
+      const scale = Math.max(targetW / imgW, targetH / imgH);
+      const w = imgW * scale;
+      const h = imgH * scale;
+      const ox = (targetW - w) / 2;
+      const oy = (targetH - h) / 2;
+      ctx.drawImage(img, ox, oy, w, h);
     }
 
     const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
 
     if (previewOnly) {
-      $("previewModal").style.display = "flex";
-      $("previewBefore").src = url;
-      $("previewAfter").src = dataUrl;
+      window.open(dataUrl, "_blank");
       return;
     }
 
-    zip.file(file.name, dataUrl.split(",")[1], { base64: true });
+    zip.file(file.name.replace(/\.[^/.]+$/, "") + "_resized.jpg", dataUrl.split(",")[1], { base64: true });
   }
 
   const blob = await zip.generateAsync({ type: "blob" });
@@ -219,9 +220,3 @@ async function processImages(previewOnly = false) {
 
 $("imgPreviewBtn").addEventListener("click", () => processImages(true));
 $("imgProcessBtn").addEventListener("click", () => processImages(false));
-
-/* ================= PREVIEW CLOSE ================= */
-
-$("closePreview").addEventListener("click", () => {
-  $("previewModal").style.display = "none";
-});
