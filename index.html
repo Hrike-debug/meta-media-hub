@@ -23,7 +23,6 @@
       <div class="right">
                 <button id="themeBtn" class="about-btn" title="Choose a visual theme">🎨</button>
         <button id="aboutBtn" class="about-btn" title="About this tool">i</button>
-        <button id="themeToggle" class="theme-toggle" title="Toggle light/dark mode">🌙</button>
         <span id="statusText" class="status">Locked</span>
       </div>
     </header>
@@ -36,6 +35,9 @@
         <button id="pwBtn" class="btn primary full">Unlock</button>
         <p id="pwMsg" class="error"></p>
       </div>
+      <footer class="footer">
+        Created by Mukesh Yadav • META E-learning Team
+      </footer>
     </div>
     
         <div id="themeModal" class="modal" style="display:none">
@@ -49,13 +51,13 @@
             <h3>Flaming Orange</h3>
           </div>
           <div class="tool-card theme-card theme-dark-glass" data-theme="dark-glass">
-            <h3>Dark Glass</h3>
+            <h3>Dark Glass (Purple)</h3>
           </div>
           <div class="tool-card theme-card theme-cyber-tech" data-theme="cyber-tech">
-            <h3>Cyber Tech</h3>
+            <h3>Cyber Tech (Green)</h3>
           </div>
           <div class="tool-card theme-card theme-retro-beige" data-theme="retro-beige">
-            <h3>Retro Beige</h3>
+            <h3>Retro Beige (Light)</h3>
           </div>
         </div>
       </div>
@@ -233,25 +235,14 @@
               Enhance & Download
               <span class="help-tip" data-tip="Applies selected enhancements and downloads the image.">?</span>
             </button>
-          </div>
+        </div>
 
           <div class="progress"><div id="enhProgress" class="bar"></div></div>
           <p id="enhStatus" class="status-text">Waiting for image.</p>
         </div>
       </div>
-
-            <div class="panel" style="margin-top:14px">
-        <div class="panel-title">Preview</div>
-
-        <div id="previewArea" class="preview-area" aria-hidden="true">
-          <img id="beforeImg" alt="Before" />
-          <div id="afterLayer" class="after-layer">
-            <img id="afterImg" alt="After" />
-          </div>
-        </div>
-      </div>
-
-    </section>
+      
+          </section>
 
     <footer class="footer" style="margin-top:18px">
       Created by Mukesh Yadav • META E-learning Team
