@@ -1,12 +1,12 @@
 /* ==========================================================
    Meta Media Hub - script_v.js
-   Stable version for your current HTML:
+   Stable version for current HTML:
    - Auth + Nav
-   - Smart Human Detection + Scan Banner
-   - Manual Focus (box) ONLY when no human
+   - Smart Human Detection + banner
+   - Manual Focus (drag box) ONLY when no human
    - Center-cover crop (no stretch)
-   - Preview First = popup (Before/After)
-   - Process = ZIP download
+   - Preview First (popup Before/After)
+   - Process & Download ZIP
 ========================================================== */
 
 const $ = (id) => document.getElementById(id);
@@ -14,6 +14,7 @@ const $ = (id) => document.getElementById(id);
 /* ====================
    AUTH + NAV
 ==================== */
+
 const pwModal = $("pwModal");
 const pwInput = $("pwInput");
 const pwBtn = $("pwBtn");
@@ -42,22 +43,24 @@ function showSection(name) {
 }
 
 function unlock() {
-  pwMsg.textContent = "";
+  if (!pwInput) return;
+  if (pwMsg) pwMsg.textContent = "";
   if (pwInput.value === PASSWORD) {
     saveAuth(true);
-    pwModal.style.display = "none";
-    statusText.textContent = "Unlocked";
+    if (pwModal) pwModal.style.display = "none";
+    if (statusText) statusText.textContent = "Unlocked";
     showSection("home");
   } else {
-    pwMsg.textContent = "Incorrect password";
+    if (pwMsg) pwMsg.textContent = "Incorrect password";
   }
 }
 
 if (pwBtn) pwBtn.addEventListener("click", unlock);
-if (pwInput)
+if (pwInput) {
   pwInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") unlock();
   });
+}
 
 if (isAuthed()) {
   if (pwModal) pwModal.style.display = "none";
@@ -123,18 +126,16 @@ if (dropImage && imageInput) {
   dropImage.addEventListener("drop", async (e) => {
     e.preventDefault();
     dropImage.classList.remove("drag-over");
-    const files = Array.from(e.dataTransfer.files || []).filter((f) =>
-      f.type.startsWith("image/")
-    );
+    const dtFiles = (e.dataTransfer && e.dataTransfer.files) ? e.dataTransfer.files : [];
+    const files = Array.from(dtFiles).filter((f) => f.type.startsWith("image/"));
     if (!files.length) return;
     imageFiles = files;
     await handleNewImages();
   });
 
   imageInput.addEventListener("change", async (e) => {
-    const files = Array.from(e.target.files || []).filter((f) =>
-      f.type.startsWith("image/")
-    );
+    const inputFiles = (e.target && e.target.files) ? e.target.files : [];
+    const files = Array.from(inputFiles).filter((f) => f.type.startsWith("image/"));
     if (!files.length) return;
     imageFiles = files;
     await handleNewImages();
@@ -212,7 +213,9 @@ async function handleNewImages() {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.src = url;
-    await img.decode().catch(() => {});
+    try {
+      await img.decode();
+    } catch (e) {}
     const human = await detectPerson(img);
     imageDetectionMap[file.name] = human ? "person" : "none";
     if (human) found++;
@@ -225,10 +228,9 @@ async function handleNewImages() {
   if (bannerIcon) bannerIcon.textContent = hasHuman ? "🟢" : "⚪";
   if (bannerText)
     bannerText.innerHTML = hasHuman
-      ? `Smart Human Detection: found people in <b>${found}</b> image(s)`
+      ? 'Smart Human Detection: found people in <b>' + found + "</b> image(s)"
       : "Smart Human Detection: no humans found";
 
-  /* Manual focus enable/disable based on human */
   if (focusBtn) {
     if (hasHuman) {
       focusBtn.disabled = true;
@@ -281,8 +283,8 @@ function ensureFocusOverlay() {
     manualFocusBox = null;
     if (focusRect) {
       focusRect.style.display = "block";
-      focusRect.style.left = `${startX}px`;
-      focusRect.style.top = `${startY}px`;
+      focusRect.style.left = startX + "px";
+      focusRect.style.top = startY + "px";
       focusRect.style.width = "0px";
       focusRect.style.height = "0px";
     }
@@ -292,10 +294,10 @@ function ensureFocusOverlay() {
     if (!drawing || !focusRect) return;
     const w = e.clientX - startX;
     const h = e.clientY - startY;
-    focusRect.style.width = `${Math.abs(w)}px`;
-    focusRect.style.height = `${Math.abs(h)}px`;
-    focusRect.style.left = `${w < 0 ? e.clientX : startX}px`;
-    focusRect.style.top = `${h < 0 ? e.clientY : startY}px`;
+    focusRect.style.width = Math.abs(w) + "px";
+    focusRect.style.height = Math.abs(h) + "px";
+    focusRect.style.left = (w < 0 ? e.clientX : startX) + "px";
+    focusRect.style.top = (h < 0 ? e.clientY : startY) + "px";
   });
 
   window.addEventListener("mouseup", () => {
@@ -346,8 +348,8 @@ if (focusBtn) {
 ====================== */
 
 function drawCover(ctx, img, targetW, targetH) {
-  const imgW = img.naturalWidth;
-  const imgH = img.naturalHeight;
+  const imgW = img.naturalWidth || img.width;
+  const imgH = img.naturalHeight || img.height;
 
   const scale = Math.max(targetW / imgW, targetH / imgH);
   const drawW = imgW * scale;
@@ -356,10 +358,11 @@ function drawCover(ctx, img, targetW, targetH) {
   let offsetX = (targetW - drawW) / 2;
   let offsetY = (targetH - drawH) / 2;
 
-  // If we have a manual focus box and no human, bias crop to that area
   if (manualFocusBox && !hasHuman) {
-    const fx = (manualFocusBox.x + manualFocusBox.width / 2) / window.innerWidth;
-    const fy = (manualFocusBox.y + manualFocusBox.height / 2) / window.innerHeight;
+    const fx =
+      (manualFocusBox.x + manualFocusBox.width / 2) / window.innerWidth;
+    const fy =
+      (manualFocusBox.y + manualFocusBox.height / 2) / window.innerHeight;
 
     const targetCenterX = targetW * 0.5;
     const targetCenterY = targetH * 0.5;
@@ -370,13 +373,14 @@ function drawCover(ctx, img, targetW, targetH) {
     offsetX = targetCenterX - imgCenterX;
     offsetY = targetCenterY - imgCenterY;
 
-    // Clamp so we don't leave empty bands
     const minX = targetW - drawW;
     const maxX = 0;
     const minY = targetH - drawH;
     const maxY = 0;
-    offsetX = Math.max(minX, Math.min(maxX, offsetX));
-    offsetY = Math.max(minY, Math.min(maxY, offsetY));
+    if (offsetX < minX) offsetX = minX;
+    if (offsetX > maxX) offsetX = maxX;
+    if (offsetY < minY) offsetY = minY;
+    if (offsetY > maxY) offsetY = maxY;
   }
 
   ctx.imageSmoothingEnabled = true;
@@ -386,7 +390,6 @@ function drawCover(ctx, img, targetW, targetH) {
 
 /* ======================
    PREVIEW FIRST
-   (Popup with Before/After)
 ====================== */
 
 async function previewFirst() {
@@ -399,10 +402,22 @@ async function previewFirst() {
   const img = new Image();
   const url = URL.createObjectURL(file);
   img.src = url;
-  await img.decode().catch(() => {});
+  try {
+    await img.decode();
+  } catch (e) {}
 
-  const targetW = parseInt(imgWidth?.value || "0", 10) || img.naturalWidth;
-  const targetH = parseInt(imgHeight?.value || "0", 10) || img.naturalHeight;
+  let targetW = 0;
+  let targetH = 0;
+  if (imgWidth) {
+    const parsed = parseInt(imgWidth.value, 10);
+    if (!isNaN(parsed) && parsed > 0) targetW = parsed;
+  }
+  if (imgHeight) {
+    const parsed = parseInt(imgHeight.value, 10);
+    if (!isNaN(parsed) && parsed > 0) targetH = parsed;
+  }
+  if (!targetW) targetW = img.naturalWidth || img.width;
+  if (!targetH) targetH = img.naturalHeight || img.height;
 
   const canvas = document.createElement("canvas");
   canvas.width = targetW;
@@ -417,19 +432,23 @@ async function previewFirst() {
   if (!wPrev) {
     alert("Popup blocked — allow popups to see preview.");
   } else {
-    wPrev.document.write(`
-      <title>Preview</title>
-      <div style="display:flex;gap:16px;padding:16px;background:#111;color:#fff;font-family:system-ui">
-        <div style="flex:1;text-align:center">
-          <h3>Before</h3>
-          <img src="${url}" style="max-width:100%;height:auto;border-radius:8px;border:1px solid #555;">
-        </div>
-        <div style="flex:1;text-align:center">
-          <h3>After</h3>
-          <img src="${outUrl}" style="max-width:100%;height:auto;border-radius:8px;border:1px solid #555;">
-        </div>
-      </div>
-    `);
+    wPrev.document.write(
+      '<title>Preview</title>' +
+        '<div style="display:flex;gap:16px;padding:16px;background:#111;color:#fff;font-family:system-ui">' +
+        '<div style="flex:1;text-align:center">' +
+        "<h3>Before</h3>" +
+        '<img src="' +
+        url +
+        '" style="max-width:100%;height:auto;border-radius:8px;border:1px solid #555;">' +
+        "</div>" +
+        '<div style="flex:1;text-align:center">' +
+        "<h3>After</h3>" +
+        '<img src="' +
+        outUrl +
+        '" style="max-width:100%;height:auto;border-radius:8px;border:1px solid #555;">' +
+        "</div>" +
+        "</div>"
+    );
     wPrev.document.close();
   }
 
@@ -444,7 +463,10 @@ if (imgPreviewBtn) imgPreviewBtn.addEventListener("click", previewFirst);
 ====================== */
 
 function dataURLToBlob(dataUrl) {
-  const [header, data] = dataUrl.split(",");
+  const parts = dataUrl.split(",");
+  if (parts.length < 2) return null;
+  const header = parts[0];
+  const data = parts[1];
   const mimeMatch = header.match(/:(.*?);/);
   const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
   const bin = atob(data);
@@ -462,9 +484,22 @@ async function processAndDownload() {
 
   if (imgStatus) imgStatus.textContent = "Processing images…";
 
-  const tW = parseInt(imgWidth?.value || "0", 10) || 0;
-  const tH = parseInt(imgHeight?.value || "0", 10) || 0;
-  const q = imgQuality ? (parseInt(imgQuality.value, 10) || 90) / 100 : 0.9;
+  let tW = 0;
+  let tH = 0;
+  if (imgWidth) {
+    const parsed = parseInt(imgWidth.value, 10);
+    if (!isNaN(parsed) && parsed > 0) tW = parsed;
+  }
+  if (imgHeight) {
+    const parsed = parseInt(imgHeight.value, 10);
+    if (!isNaN(parsed) && parsed > 0) tH = parsed;
+  }
+
+  let q = 0.9;
+  if (imgQuality) {
+    const parsedQ = parseInt(imgQuality.value, 10);
+    if (!isNaN(parsedQ) && parsedQ > 0) q = parsedQ / 100;
+  }
 
   const zip = new JSZip();
   let processed = 0;
@@ -473,10 +508,12 @@ async function processAndDownload() {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.src = url;
-    await img.decode().catch(() => {});
+    try {
+      await img.decode();
+    } catch (e) {}
 
-    const targetW = tW || img.naturalWidth;
-    const targetH = tH || img.naturalHeight;
+    const targetW = tW || img.naturalWidth || img.width;
+    const targetH = tH || img.naturalHeight || img.height;
 
     const canvas = document.createElement("canvas");
     canvas.width = targetW;
@@ -487,8 +524,10 @@ async function processAndDownload() {
 
     const dataUrl = canvas.toDataURL("image/jpeg", q);
     const blob = dataURLToBlob(dataUrl);
-    const base = file.name.replace(/\.[^/.]+$/, "");
-    zip.file(base + "_resized.jpg", blob);
+    if (blob) {
+      const base = file.name.replace(/\.[^/.]+$/, "");
+      zip.file(base + "_resized.jpg", blob);
+    }
 
     processed++;
     URL.revokeObjectURL(url);
@@ -507,7 +546,5 @@ async function processAndDownload() {
 if (imgProcessBtn) imgProcessBtn.addEventListener("click", processAndDownload);
 
 /* ============================
-   (AI ENHANCER JS untouched here)
-   You can keep your existing enhancer logic below,
-   or integrate it similarly.
+   (Enhancer JS lives separately if you have it)
 ============================ */
