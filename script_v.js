@@ -33,13 +33,18 @@ function unlock() {
 }
 
 on(pwBtn, "click", unlock);
-on(pwInput, "keydown", e => { if (e.key === "Enter") unlock(); });
+on(pwInput, "keydown", e => { if(e.key === "Enter") unlock(); });
 
+/* fixed password init */
 if (isAuthed()) {
-  pwModal.style.display = "none";
-  statusText.textContent = "Unlocked";
-  showSection("home");
+    pwModal.style.display = "none";
+    statusText.textContent = "Unlocked";
+    showSection("home");
+} else {
+    pwModal.style.display = "flex";  
+    statusText.textContent = "Locked";
 }
+
 
 /* ---------------------------------------------------------
    NAVIGATION
@@ -486,3 +491,4 @@ $("enhRunBtn").onclick = ()=>{
 
   $("enhStatus").textContent = "Downloaded.";
 };
+
