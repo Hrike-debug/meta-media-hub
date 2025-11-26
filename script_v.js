@@ -190,3 +190,28 @@ async function processImages(previewOnly = false) {
 
 imgProcessBtn.addEventListener("click", () => processImages(false));
 imgPreviewBtn.addEventListener("click", () => processImages(true));
+/* =========================
+   🔧 SAFE NAVIGATION RESTORE
+   ========================= */
+(function restoreNavigation(){
+  const btnImage = document.getElementById("btnImage");
+  const btnEnhancer = document.getElementById("btnEnhancer");
+  const backHomeFromImage = document.getElementById("backHomeFromImage");
+  const backHomeFromEnhancer = document.getElementById("backHomeFromEnhancer");
+
+  const home = document.getElementById("home");
+  const imageSection = document.getElementById("imageSection");
+  const enhancerSection = document.getElementById("enhancerSection");
+
+  function show(name){
+    if (home) home.style.display = name === "home" ? "flex" : "none";
+    if (imageSection) imageSection.style.display = name === "resize" ? "block" : "none";
+    if (enhancerSection) enhancerSection.style.display = name === "enhance" ? "block" : "none";
+  }
+
+  if (btnImage) btnImage.onclick = () => show("resize");
+  if (btnEnhancer) btnEnhancer.onclick = () => show("enhance");
+  if (backHomeFromImage) backHomeFromImage.onclick = () => show("home");
+  if (backHomeFromEnhancer) backHomeFromEnhancer.onclick = () => show("home");
+})();
+
