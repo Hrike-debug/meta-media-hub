@@ -1,4 +1,4 @@
-// script.js — Meta Media Hub (Option B) — Modal is primary annotator
+// script_v.js — Meta Media Hub (Option B) — Modal is primary annotator
 (() => {
   const $ = id => document.getElementById(id);
   const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
@@ -618,3 +618,4 @@
   setTimeout(() => { ensureModalCanvasSize(); ensureSplitAnnotCanvasSize(); refreshSplit(); }, 80);
 
 })();
+
