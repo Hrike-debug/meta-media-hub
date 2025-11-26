@@ -328,7 +328,24 @@ async function processImages(previewOnly = false) {
     const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(img, 0, 0, w, h);
+  
+
+/* ✅ Universal Center Scale (No Stretch) */
+const imgW = img.naturalWidth;
+const imgH = img.naturalHeight;
+const targetW = w;
+const targetH = h;
+
+const scale = Math.max(targetW / imgW, targetH / imgH);
+
+const scaledW = imgW * scale;
+const scaledH = imgH * scale;
+
+const offsetX = (targetW - scaledW) / 2;
+const offsetY = (targetH - scaledH) / 2;
+
+ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
+
 
     const dataUrl = canvas.toDataURL("image/jpeg", q);
 
@@ -771,3 +788,4 @@ function downloadDataUrl(dataUrl, filename) {
   a.download = filename;
   a.click();
 }
+
