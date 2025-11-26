@@ -274,6 +274,28 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
+  <!-- ✅ PREVIEW MODAL (Image Resizer) -->
+<div id="imgPreviewModal" class="modal">
+  <div class="modal-panel preview-modal-panel">
+    <div class="preview-header">
+      <h3>Preview Comparison</h3>
+      <button id="closeImgPreview" class="close-btn">✕</button>
+    </div>
+
+    <div class="preview-compare">
+      <div class="preview-box">
+        <p class="preview-label">Before</p>
+        <img id="previewBeforeImg" />
+      </div>
+
+      <div class="preview-box">
+        <p class="preview-label">After</p>
+        <img id="previewAfterImg" />
+      </div>
+    </div>
+  </div>
+</div>
+
   <!-- MAIN SCRIPT -->
   <script src="script_v.js"></script>
 </body>
