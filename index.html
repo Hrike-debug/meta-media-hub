@@ -1,267 +1,190 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Meta Media Hub — Image Suite (Annotator Mode)</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Meta Media Hub — Image Suite (Split Slider Annotator)</title>
+
+<!-- CSS -->
+<link rel="stylesheet" href="style.css" />
+
 </head>
-
 <body>
-  <div class="app-wrap">
+<div class="app-wrap">
 
-    <!-- TOP BAR -->
-    <header class="topbar">
-      <div class="brand">
-        <div class="logo">MM</div>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">MM</div>
+      <div>
+        <h1 style="margin:0;font-size:18px">Meta Media Hub</h1>
+        <div class="tagline">Internal image toolkit for META e-learning</div>
+      </div>
+    </div>
+    <div class="right">
+      <button id="themeBtn" class="about-btn" title="Choose Theme">🎨</button>
+      <button id="aboutBtn" class="about-btn" title="About this tool">i</button>
+      <button id="themeToggle" class="about-btn" title="Toggle theme">🌓</button>
+      <span id="statusText" class="status">Locked</span>
+    </div>
+  </header>
+
+  <!-- PASSWORD MODAL -->
+  <div id="pwModal" class="modal" style="display:flex">
+    <div class="modal-panel pw-panel" style="max-width:380px">
+      <h2>Enter Password</h2>
+      <p class="small-muted">Unlock the Meta Media Hub</p>
+      <input id="pwInput" class="input" type="password" placeholder="Password" style="width:100%;margin-top:8px"/>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button id="pwBtn" class="btn primary" style="flex:1">Unlock</button>
+        <button id="pwClose" class="btn ghost" style="flex:0 0 auto">Close</button>
+      </div>
+      <p id="pwMsg" class="small-muted" style="color:#ff9090;margin-top:8px;min-height:18px"></p>
+    </div>
+  </div>
+
+  <!-- HOME -->
+  <section id="home" class="home-section" style="display:none">
+    <div class="tool-card panel" id="btnImage" title="Image tools">
+      <div class="icon">🖼️</div>
+      <h3 style="margin:6px 0">Image Tools</h3>
+      <p class="small-muted">Resize • Smart Center • Human Detection</p>
+    </div>
+
+    <div class="tool-card panel" id="btnEnhancer" title="AI enhancer">
+      <div class="icon">✨</div>
+      <h3 style="margin:6px 0">AI Image Enhancer</h3>
+      <p class="small-muted">Upscale • Sharpen • Denoise • HDR • Text clarity</p>
+    </div>
+  </section>
+
+  <!-- ENHANCER SECTION -->
+  <section id="enhancerSection" class="panel" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <h2 style="margin:0">AI Image Enhancer</h2>
+        <div class="small-muted">Improve quality: upscale, denoise, HDR & text clarity — in browser.</div>
+      </div>
+      <button id="backHomeFromEnhancer" class="btn ghost">← Home</button>
+    </div>
+
+    <div style="display:flex;gap:18px;align-items:flex-start">
+      <div style="flex:1">
+        <div class="panel" style="padding:12px">
+          <h4 style="margin:0 0 8px 0">Upload Image</h4>
+          <div id="dropEnhance" class="dropzone panel" style="cursor:pointer;padding:18px;text-align:center">Click or drag & drop a single image</div>
+          <input id="enhanceInput" type="file" accept="image/*" style="display:none">
+          <div id="enhFileInfo" class="small-muted" style="margin-top:8px">No image selected.</div>
+          <div style="margin-top:8px" class="small-muted">Ideal for portraits, screenshots, thumbnails and hero images.</div>
+        </div>
+      </div>
+
+      <div style="width:360px">
+        <div class="panel" style="padding:12px">
+          <h4 style="margin:0 0 8px 0">Enhancement Options</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label><input type="checkbox" id="enhUpscale2x"> Upscale ×2</label>
+            <label><input type="checkbox" id="enhUpscale4x"> Upscale ×4</label>
+            <label><input type="checkbox" id="enhFaceEnhance"> Boost Faces & Detail</label>
+            <label><input type="checkbox" id="enhDenoise"> Denoise & Sharpen</label>
+            <label><input type="checkbox" id="enhOCR"> Text / OCR Clarity</label>
+            <label><input type="checkbox" id="enhHDR"> HDR Boost</label>
+            <label><input type="checkbox" id="enhHide"> Object Hide / Privacy Blur</label>
+          </div>
+
+          <div class="toolbar-row" style="margin-top:12px">
+            <button id="hideAreaBtn" class="btn ghost">Set Hide Area</button>
+            <button id="openAnnotatorBtn" class="btn ghost">Annotate</button>
+          </div>
+
+          <div style="margin-top:12px;">
+            <label class="small-muted">Output Quality <span id="enhQualityVal">92%</span></label>
+            <input id="enhQuality" type="range" min="70" max="100" value="92" style="width:100%">
+          </div>
+
+          <div class="toolbar-row" style="margin-top:12px">
+            <button id="enhPreviewBtn" class="btn ghost">Preview</button>
+            <button id="enhRunBtn" class="btn primary">Enhance & Download</button>
+          </div>
+
+          <div id="enhStatus" class="small-muted" style="margin-top:8px">Waiting for image.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPLIT SLIDER PREVIEW -->
+    <div class="split-wrap">
+      <div class="split-labels"><span>Before</span><span class="right">After</span></div>
+
+      <div id="splitContainer" class="split-container">
+        <div class="split-before"><img id="beforeImg" src="/mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png"></div>
+        <div id="afterClip" class="split-after"><img id="afterImg" src="/mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png"></div>
+
+        <!-- annotation canvas -->
+        <canvas id="splitAnnotCanvas" class="annotation-canvas"></canvas>
+
+        <!-- handle -->
+        <div id="splitHandle" class="split-handle"><div class="bar"></div></div>
+      </div>
+
+      <!-- mini toolbar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <div class="annotation-toolbar">
+          <button class="btn ghost annot-btn" data-tool="rect">Rect</button>
+          <button class="btn ghost annot-btn" data-tool="arrow">Arrow</button>
+          <button class="btn ghost annot-btn" data-tool="text">Text</button>
+          <button class="btn ghost annot-btn" data-tool="highlight">Highlight</button>
+          <button class="btn ghost annot-btn" data-tool="blur">Blur</button>
+          <button class="btn ghost annot-btn" data-tool="free">Free</button>
+          <button id="annotUndo" class="btn ghost">Undo</button>
+          <button id="annotClear" class="btn ghost">Clear</button>
+        </div>
+
         <div>
-          <h1>Meta Media Hub</h1>
-          <span class="tagline">Internal image toolkit for META e-learning</span>
+          <button id="miniApply" class="btn primary">Apply → After</button>
         </div>
-      </div>
-
-      <div class="right">
-        <button id="themeBtn" class="about-btn" title="Choose Theme">🎨</button>
-        <button id="aboutBtn" class="about-btn" title="About this tool">i</button>
-        <button id="themeToggle" class="theme-toggle" title="Toggle light/dark">🌙</button>
-        <span id="statusText" class="status">Locked</span>
-      </div>
-    </header>
-
-    <!-- PASSWORD MODAL (kept) -->
-    <div id="pwModal" class="modal">
-      <div class="modal-panel pw-panel">
-        <h2>Enter Password</h2>
-        <p class="small">Unlock the Meta Media Hub</p>
-        <input id="pwInput" class="input" type="password" placeholder="Password" />
-        <button id="pwBtn" class="btn primary full">Unlock</button>
-        <p id="pwMsg" class="error"></p>
       </div>
     </div>
 
-    <!-- HOME -->
-    <section id="home" class="home-section" style="display:none">
-      <div class="tool-card" id="btnImage">
-        <div class="icon">🖼️</div>
-        <h3>Image Tools</h3>
-        <p>Resize • Smart Center • Human Detection • (No ZIP)</p>
-      </div>
+  </section>
 
-      <div class="tool-card" id="btnEnhancer">
-        <div class="icon">✨</div>
-        <h3>AI Image Enhancer</h3>
-        <p>Upscale • Sharpen • Denoise • HDR • Text clarity</p>
-      </div>
-    </section>
+  <footer class="small-muted" style="text-align:center;margin-top:18px">Created by Mukesh Yadav • META E-learning Team</footer>
+</div>
 
-    <!-- ENHANCER SECTION -->
-    <section id="enhancerSection" class="section" style="display:none">
-      <div class="section-header">
-        <div>
-          <h2>AI Image Enhancer</h2>
-          <p class="subtitle">Improve quality: upscale, sharpen, denoise, HDR & text clarity — right in the browser.</p>
-        </div>
-        <button id="backHomeFromEnhancer" class="back-btn">← Home</button>
-      </div>
-
-      <div class="panel enhancer-layout">
-        <div class="enh-left">
-          <h3 class="panel-title">Upload Image</h3>
-          <div id="dropEnhance" class="dropzone" data-tip="Single image for enhancement/annotation.">
-            Click or drag & drop a single image
-          </div>
-          <input id="enhanceInput" type="file" accept="image/*">
-          <div id="enhFileInfo" class="file-list small-file">No image selected.</div>
-          <p class="small-muted">Ideal for portraits, key visuals, LMS screenshots, thumbnails and hero images.</p>
-        </div>
-
-        <div class="enh-right">
-          <h3 class="panel-title">Enhancement Options</h3>
-          <div class="ai-panel">
-            <div class="ai-panel-header">
-              <span class="label">Smart Enhancements (processed locally)</span>
-              <div class="help-tip" data-tip="Work happens in your browser using Canvas. No upload, no server.">?</div>
-            </div>
-
-            <div class="ai-options">
-              <label class="ai-option"><input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span><div class="help-tip" data-tip="Simple 2× nearest-neighbor upscale + sharpen. Good for small images.">?</div></label>
-
-              <label class="ai-option"><input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span><div class="help-tip" data-tip="Stronger 4× interpolation. Use only if needed (larger memory/time).">?</div></label>
-
-              <label class="ai-option"><input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span><div class="help-tip" data-tip="Local edge-aware sharpening to preserve facial detail and UI elements.">?</div></label>
-
-              <label class="ai-option"><input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span><div class="help-tip" data-tip="Remove light sensor noise and apply a gentle unsharp mask.">?</div></label>
-
-              <label class="ai-option"><input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span><div class="help-tip" data-tip="Boost contrast and midtone clarity around small text for legibility.">?</div></label>
-
-              <label class="ai-option"><input type="checkbox" id="enhHDR"><span>HDR Boost (Shadows & Highlights)</span><div class="help-tip" data-tip="Lift shadows and gently compress highlights to preserve details.">?</div></label>
-
-              <label class="ai-option"><input type="checkbox" id="enhHide"><span>Object Hide / Privacy Blur</span><div class="help-tip" data-tip="Select an area in Annotator to blur faces, IDs or logos.">?</div></label>
-            </div>
-
-            <div class="btn-row small-row">
-              <button id="hideAreaBtn" class="btn ghost" data-tip="Open Annotator focused on Blur tool">Set Hide Area</button>
-              <button id="openAnnotatorBtn" class="btn ghost" data-tip="Open full Annotator (all tools)">Annotate</button>
-            </div>
-
-            <p class="ai-note">These filters gently improve clarity, contrast and reduce noise using on-device processing. No server, no upload.</p>
-          </div>
-
-          <div class="two-input">
-            <div class="mini-control">
-              <label class="small-label">Output Quality</label>
-              <div class="help-tip" data-tip="Controls JPEG export quality. 92% is a sweet spot.">?</div>
-              <input id="enhQuality" type="range" min="70" max="100" value="92">
-              <span id="enhQualityVal" class="mini-val">92%</span>
-            </div>
-          </div>
-
-          <div class="btn-row">
-            <button id="enhPreviewBtn" class="btn ghost" data-tip="Update inline preview with current enhanced image (non-destructive)">Preview</button>
-            <button id="enhRunBtn" class="btn primary" data-tip="Apply filters, merge annotations and download">Enhance & Download</button>
-          </div>
-
-          <div class="progress"><div id="enhProgress" class="bar"></div></div>
-          <p id="enhStatus" class="status-text">Waiting for image.</p>
-        </div>
-      </div>
-
-      <!-- ANNOTATION / PREVIEW -->
-      <div class="panel" style="margin-top:14px">
-        <div class="panel-title">Annotate / Preview</div>
-
-        <div id="previewArea" class="preview-area" aria-hidden="true">
-          <img id="beforeImg" alt="Before" src="/mnt/data/ee5ca6b2-da36-420c-8359-ec00b9cba47b.png" />
-          <div id="afterLayer" class="after-layer"><img id="afterImg" alt="After" /></div>
-
-          <!-- overlay canvas -->
-          <canvas id="annoCanvas" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto;"></canvas>
-        </div>
-
-        <!-- condensed toolbar (shows state) -->
-        <div id="annoToolbarMini" class="annotation-toolbar" style="display:flex; justify-content:space-between; margin-top:12px;">
-          <div style="display:flex;gap:8px;align-items:center;">
-            <button id="miniAnnotateOpen" class="btn ghost" data-tip="Open Annotator modal">Open Annotator</button>
-            <div class="small-muted">Current: <span id="annoStateLabel">none</span></div>
-          </div>
-          <div>
-            <button id="annApply" class="btn primary" data-tip="Apply current annotations to the underlying image">Apply</button>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <footer class="footer" style="margin-top:18px">Created by Mukesh Yadav • META E-learning Team</footer>
-  </div>
-
-  <!-- FULL ANNOTATOR MODAL (Option B) -->
-  <div id="annotatorModal" class="modal">
-    <div class="modal-panel theme-panel" style="max-width:1100px;">
-      <div class="modal-head">
-        <h3>Annotator — Full Editor</h3>
-        <div>
-          <button id="annotatorCancel" class="btn ghost">Cancel</button>
-          <button id="annotatorApply" class="btn primary">Apply & Close</button>
-        </div>
-      </div>
-
-      <div style="display:flex; gap:12px; margin-top:12px;">
-        <!-- toolbar column -->
-        <div style="width:280px;">
-          <div style="display:flex;flex-direction:column; gap:8px;">
-            <div class="small-muted">Tools</div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;">
-              <button class="annot-btn" data-tool="rect">Rectangle</button>
-              <button class="annot-btn" data-tool="arrow">Arrow</button>
-              <button class="annot-btn" data-tool="text">Text</button>
-              <button class="annot-btn" data-tool="highlight">Highlight</button>
-              <button class="annot-btn" data-tool="blur">Blur</button>
-              <button class="annot-btn" data-tool="free">Freehand</button>
-              <button id="annotUndo" class="annot-btn">Undo</button>
-              <button id="annotClear" class="annot-btn">Clear</button>
-            </div>
-
-            <div style="margin-top:8px;">
-              <label class="small-muted">Color</label><br>
-              <input id="annotColor" type="color" value="#ff7a3c" style="margin-top:6px;">
-            </div>
-
-            <div style="margin-top:8px;">
-              <label class="small-muted">Size</label><br>
-              <input id="annotSize" type="range" min="1" max="40" value="4">
-            </div>
-
-            <div style="margin-top:12px;">
-              <div class="small-muted">Quick Actions</div>
-              <div style="display:flex;gap:8px;margin-top:8px;">
-                <button id="annotZoomFit" class="btn ghost">Fit</button>
-                <button id="annotZoom100" class="btn ghost">100%</button>
-                <button id="annotClearAll" class="btn ghost">Clear All</button>
-              </div>
-            </div>
-
-            <div style="margin-top:14px;">
-              <div class="small-muted">Tips</div>
-              <ul>
-                <li>Draw rectangle/blur then click Apply</li>
-                <li>Text opens a prompt for quick entry</li>
-                <li>Use Apply & Close to merge into image</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <!-- canvas area -->
-        <div style="flex:1; position:relative;">
-          <div id="annotCanvasWrap" style="height:640px; background:#111; border-radius:8px; overflow:hidden; position:relative;">
-            <img id="annotBase" alt="annot base" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none" />
-            <canvas id="annotCanvas" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto;"></canvas>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- THEME & ABOUT MODALS (kept simple) -->
-  <div id="themeModal" class="modal">
-    <div class="modal-panel theme-panel">
-      <div class="modal-head">
-        <h3>Select Theme</h3>
-        <button id="closeTheme" class="close-btn">✕</button>
-      </div>
-      <div class="theme-grid">
-        <div class="theme-card" data-theme="dark-glass"><div class="theme-preview tg-dark"></div><h4>Dark Glass</h4></div>
-        <div class="theme-card" data-theme="cyber-tech"><div class="theme-preview tg-cyber"></div><h4>Cyber Tech</h4></div>
-        <div class="theme-card" data-theme="retro-beige"><div class="theme-preview tg-retro"></div><h4>Retro Beige</h4></div>
-        <div class="theme-card" data-theme="flaming-orange"><div class="theme-preview tg-orange"></div><h4>Flaming Orange</h4></div>
+<!-- Annotator modal -->
+<div id="annotModal" class="modal">
+  <div class="modal-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 style="margin:0">Full Annotator</h3>
+      <div>
+        <button id="annotClose" class="btn ghost">Cancel</button>
+        <button id="annotApply" class="btn primary">Apply & Close</button>
       </div>
     </div>
-  </div>
 
-  <div id="aboutModal" class="modal">
-    <div class="modal-panel about-panel">
-      <div class="modal-head">
-        <div class="about-head">
-          <span class="about-pill">About</span>
-          <h3>Meta Media Hub</h3>
+    <div style="display:flex;gap:12px;margin-top:12px">
+      <div style="width:240px">
+        <div class="small-muted">Color</div>
+        <input id="annotColor" type="color" value="#ff7a3c" style="margin-top:8px">
+        <div class="small-muted" style="margin-top:8px">Size</div>
+        <input id="annotSize" type="range" min="1" max="40" value="4" style="width:100%;margin-top:6px">
+        <div style="margin-top:12px">
+          <button id="annotZoomFit" class="btn ghost">Fit</button>
+          <button id="annotZoom100" class="btn ghost">100%</button>
+          <button id="annotClearAll" class="btn ghost">Clear All</button>
         </div>
-        <button id="closeAbout" class="close-btn">✕</button>
       </div>
-      <div class="about-grid">
-        <div class="about-col">
-          <h4>What it does</h4>
+      <div style="flex:1;position:relative">
+        <div id="annotFullWrap" style="height:560px;background:#111;border-radius:8px;overflow:hidden;position:relative">
+          <img id="annotFullBase" src="/mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none"/>
+          <canvas id="annotFullCanvas" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto"></canvas>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- LIBRARIES -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+<!-- JS -->
+<script src="script.js"></script>
 
-  <!-- MAIN SCRIPT (updated) -->
-  <script src="script_v_annotator.js"></script>
 </body>
 </html>
