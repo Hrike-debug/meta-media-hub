@@ -1,117 +1,200 @@
+/* -----------------------------------------------------
+   GLOBAL THEME — Cinnamon Pro
+----------------------------------------------------- */
 :root {
   --bg:#060608;
+  --card:#111217;
   --panel:#15161d;
   --text:#f3f3f6;
   --muted:#8f93a2;
   --accent:#ff7a3c;
+  --accent-light:#ffb27a;
   --border:rgba(255,255,255,0.08);
+  --shadow:0 20px 60px rgba(0,0,0,0.80);
 }
 
 body {
   margin:0;
   background:var(--bg);
   color:var(--text);
-  font-family:system-ui, Arial;
+  font-family:system-ui, -apple-system, "Inter", Arial, sans-serif;
 }
 
+/* Wrapping */
 .app-wrap {
   max-width:1200px;
   margin:auto;
-  padding:24px;
+  padding:26px;
+  box-sizing:border-box;
 }
 
+/* -----------------------------------------------------
+   TOP BAR
+----------------------------------------------------- */
 .topbar {
   display:flex;
   justify-content:space-between;
-  margin-bottom:30px;
+  align-items:center;
+  margin-bottom:24px;
+}
+
+.brand {
+  display:flex;
+  gap:14px;
+  align-items:center;
 }
 
 .logo {
-  width:45px;
-  height:45px;
-  background:var(--accent);
+  width:46px;
+  height:46px;
+  border-radius:14px;
+  background: radial-gradient(circle at 0 0, var(--accent), #2b0e07);
   display:flex;
   align-items:center;
   justify-content:center;
-  border-radius:10px;
+  color:#fff4eb;
   font-weight:700;
+  font-size:18px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.8);
+}
+
+.tagline {
+  font-size:13px;
+  color:var(--muted);
+}
+
+.right {
+  display:flex;
+  gap:10px;
+  align-items:center;
 }
 
 .about-btn {
-  background:#222;
+  width:36px;
+  height:36px;
+  border-radius:8px;
   border:1px solid var(--border);
-  border-radius:7px;
+  background:rgba(255,255,255,0.04);
   cursor:pointer;
-}
-
-.home-section {
+  font-size:16px;
   display:flex;
-  gap:20px;
+  align-items:center;
   justify-content:center;
 }
 
+.status {
+  font-size:13px;
+  color:var(--muted);
+}
+
+/* -----------------------------------------------------
+   PANELS + CARDS
+----------------------------------------------------- */
 .panel {
   background:var(--panel);
-  padding:18px;
+  border:1px solid var(--border);
   border-radius:14px;
+  padding:16px;
+  box-shadow:var(--shadow);
 }
 
 .tool-card {
-  width:260px;
+  width:300px;
   text-align:center;
   cursor:pointer;
+  transition:0.2s;
 }
 
+.tool-card:hover {
+  transform:translateY(-4px);
+  border-color:rgba(255,122,60,0.45);
+}
+
+.tool-card .icon {
+  font-size:46px;
+  margin-bottom:8px;
+}
+
+/* Home layout */
+.home-section {
+  display:flex;
+  justify-content:center;
+  gap:22px;
+  margin-top:40px;
+}
+
+/* Dropzone */
+.dropzone {
+  border:1px dashed rgba(255,255,255,0.25);
+  border-radius:10px;
+  padding:18px;
+  text-align:center;
+  background:rgba(255,255,255,0.04);
+}
+
+/* Buttons */
 .btn {
+  border:0;
   padding:10px 16px;
   border-radius:999px;
   cursor:pointer;
-  border:0;
+  font-weight:600;
+  font-size:14px;
 }
 
-.btn.primary { background:var(--accent); }
-.btn.ghost { background:#222; color:#fff; }
-
-.modal {
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.8);
-  display:flex;
-  justify-content:center;
-  align-items:center;
+.btn.primary {
+  background:linear-gradient(135deg, var(--accent), #c65424);
+  color:#140400;
 }
 
-.pw-panel {
-  background:#15161d;
-  padding:30px;
-  border-radius:16px;
-  width:320px;
-  text-align:center;
+.btn.ghost {
+  background:transparent;
+  border:1px solid rgba(255,255,255,0.15);
+  color:var(--text);
 }
 
-.input {
-  width:100%;
-  padding:10px;
-  border-radius:8px;
-  border:1px solid var(--border);
-  background:#000;
-  color:#fff;
-  margin-bottom:10px;
-}
-
-.error-msg {
-  color:#ff9090;
+.small-muted {
   font-size:13px;
-  margin-top:8px;
+  color:var(--muted);
+}
+
+/* -----------------------------------------------------
+   SPLIT SLIDER PREVIEW
+----------------------------------------------------- */
+.split-wrap {
+  margin-top:26px;
+}
+
+.split-labels {
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  color:var(--muted);
+  margin-bottom:6px;
+  padding:0 4px;
 }
 
 .split-container {
   position:relative;
-  height:360px;
-  background:black;
-  margin-top:20px;
+  width:100%;
+  height:440px;
+  border-radius:12px;
+  overflow:hidden;
+  background:#000;
+  border:1px solid var(--border);
 }
 
+.split-container img {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  position:absolute;
+  top:0;
+  left:0;
+  pointer-events:none;
+}
+
+/* AFTER clipped on left side */
 .split-after {
   position:absolute;
   top:0;
@@ -119,12 +202,108 @@ body {
   overflow:hidden;
 }
 
-.split-handle {
+.split-after img {
   position:absolute;
-  width:6px;
+  top:0; left:0;
+  width:100%;
   height:100%;
-  background:rgba(255,255,255,0.3);
-  cursor:ew-resize;
+  object-fit:contain;
 }
 
-.footer { text-align:center; margin-top:20px; }
+/* Handle */
+.split-handle {
+  position:absolute;
+  top:0;
+  width:8px;
+  height:100%;
+  background:rgba(255,255,255,0.25);
+  cursor:ew-resize;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+.split-handle .bar {
+  width:2px;
+  height:60px;
+  background:var(--accent);
+  border-radius:4px;
+}
+
+/* Inline annotation canvas */
+.annotation-canvas {
+  position:absolute;
+  top:0; left:0;
+  width:100%;
+  height:100%;
+  pointer-events:auto;
+}
+
+/* Toolbar mini */
+.annotation-toolbar {
+  display:flex;
+  gap:8px;
+}
+
+.annotation-toolbar .btn {
+  padding:8px 12px;
+  font-size:13px;
+}
+
+.annot-btn.active {
+  background:var(--accent);
+  color:#200;
+}
+
+/* -----------------------------------------------------
+   MODALS
+----------------------------------------------------- */
+.modal {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.7);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:9999;
+}
+
+.modal-panel {
+  background:var(--card);
+  border-radius:14px;
+  padding:18px;
+  width:92%;
+  max-width:900px;
+  box-shadow:var(--shadow);
+}
+
+/* Password panel */
+.pw-panel {
+  max-width:360px;
+}
+
+/* Annotator modal */
+#annotFullWrap {
+  background:#000;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+#annotFullWrap img,
+#annotFullWrap canvas {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+
+/* -----------------------------------------------------
+   RESPONSIVE
+----------------------------------------------------- */
+@media (max-width:900px) {
+  .home-section { flex-direction:column; align-items:center; }
+  .split-container { height:360px; }
+}
+
+@media (max-width:600px) {
+  .split-container { height:300px; }
+}
