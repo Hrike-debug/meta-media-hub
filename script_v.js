@@ -1,6 +1,6 @@
 /* ==========================================================
    Meta Media Hub - script_v.js
-   (LOCKED BASELINE + OPTION 1 PREVIEW PATCH)
+   (LOCKED BASELINE + PREVIEW OK + SMART HUMAN RESTORED)
 ========================================================== */
 
 const $ = (id) => document.getElementById(id);
@@ -68,11 +68,12 @@ $("backHomeFromImage").addEventListener("click", () => showSection("home"));
 $("backHomeFromEnhancer").addEventListener("click", () => showSection("home"));
 
 /* =========================
-   IMAGE RESIZER
+   IMAGE RESIZER + SMART HUMAN
 ========================= */
 
 let imageFiles = [];
 let cocoModel = null;
+let imageDetectionMap = {};
 
 const dropImage = $("dropImage");
 const imageInput = $("imageInput");
@@ -86,25 +87,97 @@ const imgProcessBtn = $("imgProcessBtn");
 const imgStatus = $("imgStatus");
 const imgProgress = $("imgProgress");
 
+const smartBanner = $("smartBanner");
+const bannerIcon = $("bannerIcon");
+const bannerText = $("bannerText");
+const imgAiToggle = $("imgAiToggle");
+
 dropImage.addEventListener("click", () => imageInput.click());
 
-imageInput.addEventListener("change", e => {
+imageInput.addEventListener("change", async e => {
   imageFiles = Array.from(e.target.files).filter(f => f.type.startsWith("image/"));
-  refreshImageList();
+  await handleNewImages();
 });
 
 function refreshImageList() {
   if (!imageFiles.length) {
     imageFileList.innerHTML = "No files uploaded.";
+    smartBanner && (smartBanner.style.display = "none");
     return;
   }
-  imageFileList.innerHTML = imageFiles.map(f => `<div>${f.name}</div>`).join("");
+
+  imageFileList.innerHTML = imageFiles.map((f, i) => {
+    const st = imageDetectionMap[f.name] || "unknown";
+    let icon = "⏳";
+    let label = "Scanning…";
+    if (st === "person") { icon = "👤"; label = "Human found"; }
+    if (st === "none") { icon = "❌"; label = "No person"; }
+
+    return `
+      <div class="file-row">
+        <span>${icon}</span>
+        <div><b>${i + 1}. ${f.name}</b><br><small>${label}</small></div>
+      </div>`;
+  }).join("");
 }
 
 imgQualityVal.textContent = imgQuality.value + "%";
 imgQuality.addEventListener("input", () => {
   imgQualityVal.textContent = imgQuality.value + "%";
 });
+
+/* ===== SMART HUMAN DETECTION (RESTORED) ===== */
+
+async function loadCoco() {
+  if (cocoModel) return cocoModel;
+  imgStatus.textContent = "Loading AI model…";
+  cocoModel = await cocoSsd.load();
+  imgStatus.textContent = "Model ready";
+  return cocoModel;
+}
+
+async function detectPerson(imgEl) {
+  await loadCoco();
+  const preds = await cocoModel.detect(imgEl);
+  return preds.some(p => p.class === "person");
+}
+
+async function handleNewImages() {
+  imageDetectionMap = {};
+  refreshImageList();
+
+  if (!imageFiles.length) return;
+
+  smartBanner && (smartBanner.style.display = "flex");
+  bannerIcon && (bannerIcon.textContent = "⏳");
+  bannerText && (bannerText.textContent = "Scanning images…");
+  imgStatus.textContent = "Scanning…";
+
+  let found = 0;
+
+  for (const file of imageFiles) {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.src = url;
+    await img.decode();
+
+    const hasPerson = await detectPerson(img);
+    imageDetectionMap[file.name] = hasPerson ? "person" : "none";
+    if (hasPerson) found++;
+
+    refreshImageList();
+    URL.revokeObjectURL(url);
+  }
+
+  bannerIcon && (bannerIcon.textContent = found ? "🟢" : "⚪");
+  bannerText && (bannerText.innerHTML = found
+    ? `Smart Human Detection: <b>${found}</b> image(s)`
+    : `No people detected.`);
+  imgAiToggle && imgAiToggle.classList.toggle("active", found > 0);
+  imgStatus.textContent = "Scan complete.";
+}
+
+/* ===== RESIZE + PREVIEW ===== */
 
 async function processImages(previewOnly = false) {
   if (!imageFiles.length) return alert("Upload images first");
@@ -127,7 +200,6 @@ async function processImages(previewOnly = false) {
     canvas.height = tH || img.naturalHeight;
     const ctx = canvas.getContext("2d");
 
-    /* ✅ CENTER COVER SCALE (NO STRETCH) */
     const scale = Math.max(
       canvas.width / img.naturalWidth,
       canvas.height / img.naturalHeight
@@ -135,7 +207,6 @@ async function processImages(previewOnly = false) {
 
     const scaledW = img.naturalWidth * scale;
     const scaledH = img.naturalHeight * scale;
-
     const offsetX = (canvas.width - scaledW) / 2;
     const offsetY = (canvas.height - scaledH) / 2;
 
@@ -175,7 +246,7 @@ function dataURLToBlob(dataUrl) {
 }
 
 /* ============================
-   AI ENHANCER PREVIEW PATCH
+   AI ENHANCER PREVIEW (UNCHANGED)
 ============================ */
 
 const enhanceCanvas = document.createElement("canvas");
