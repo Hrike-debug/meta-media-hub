@@ -1,6 +1,6 @@
 /* ==========================================================
    Meta Media Hub - script_v.js
-   Stable Resizer + Smart Human Protection + Manual Focus
+   Stable Resizer + Smart Human Scan UI + Safe Crop + Manual Focus
 ========================================================== */
 
 const $ = id => document.getElementById(id);
@@ -71,6 +71,32 @@ const imageFileList = $("imageFileList");
 const imgStatus = $("imgStatus");
 const imgAiToggle = $("imgAiToggle");
 
+/* ---------- Scan UI ---------- */
+function refreshImageList() {
+  if (!imageFiles.length) {
+    imageFileList.innerHTML = "No files uploaded.";
+    return;
+  }
+
+  imageFileList.innerHTML = imageFiles.map((f, i) => {
+    const st = imageDetectionMap[f.name] || "unknown";
+    let icon = "⏳", label = "Scanning...";
+    if (st === "person") { icon = "👤"; label = "Human detected"; }
+    if (st === "none") { icon = "❌"; label = "No human"; }
+
+    return `
+      <div class="file-row">
+        <span>${icon}</span>
+        <div>
+          <b>${i + 1}. ${f.name}</b><br>
+          <small>${label}</small>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+/* ---------- COCO MODEL ---------- */
 async function loadCoco() {
   if (cocoModel) return cocoModel;
   cocoModel = await cocoSsd.load();
@@ -83,9 +109,18 @@ async function detectPerson(imgEl) {
   return preds.some(p => p.class === "person");
 }
 
+/* ---------- HANDLE NEW IMAGES ---------- */
 async function handleNewImages() {
   imageDetectionMap = {};
+  imgStatus.textContent = "Scanning images...";
+  manualFocusPoint = null;
+
   let found = 0;
+
+  for (const file of imageFiles) {
+    imageDetectionMap[file.name] = "unknown";
+  }
+  refreshImageList();
 
   for (const file of imageFiles) {
     const img = new Image();
@@ -97,6 +132,7 @@ async function handleNewImages() {
     imageDetectionMap[file.name] = hasPerson ? "person" : "none";
     if (hasPerson) found++;
 
+    refreshImageList();
     URL.revokeObjectURL(url);
   }
 
@@ -110,13 +146,16 @@ async function handleNewImages() {
   }
 }
 
+/* ---------- INPUT EVENTS ---------- */
 dropImage.addEventListener("click", () => imageInput.click());
+
 imageInput.addEventListener("change", async e => {
-  imageFiles = Array.from(e.target.files);
+  imageFiles = Array.from(e.target.files || []);
+  if (!imageFiles.length) return;
   await handleNewImages();
 });
 
-/* ================= MANUAL FOCUS ================= */
+/* ================= MANUAL FOCUS (ONLY WHEN NO HUMAN) ================= */
 
 const previewBefore = $("beforeImg");
 
@@ -161,12 +200,10 @@ async function processImages(previewOnly = false) {
     canvas.height = targetH;
     const ctx = canvas.getContext("2d");
 
-    ctx.clearRect(0, 0, targetW, targetH);
-
     const imgW = img.width;
     const imgH = img.height;
 
-    /* ✅ HUMAN SAFE MODE (CONTAIN) */
+    /* HUMAN SAFE MODE */
     if (imageDetectionMap[file.name] === "person") {
       const scale = Math.min(targetW / imgW, targetH / imgH);
       const w = imgW * scale;
@@ -176,7 +213,7 @@ async function processImages(previewOnly = false) {
       ctx.drawImage(img, ox, oy, w, h);
     }
 
-    /* ✅ MANUAL FOCUS MODE (ONLY WHEN NO HUMAN) */
+    /* MANUAL FOCUS (NO HUMAN) */
     else if (manualFocusPoint) {
       const scale = Math.max(targetW / imgW, targetH / imgH);
       const w = imgW * scale;
@@ -191,7 +228,7 @@ async function processImages(previewOnly = false) {
       ctx.drawImage(img, ox, oy, w, h);
     }
 
-    /* ✅ DEFAULT CENTER COVER */
+    /* DEFAULT CENTER COVER */
     else {
       const scale = Math.max(targetW / imgW, targetH / imgH);
       const w = imgW * scale;
@@ -208,7 +245,11 @@ async function processImages(previewOnly = false) {
       return;
     }
 
-    zip.file(file.name.replace(/\.[^/.]+$/, "") + "_resized.jpg", dataUrl.split(",")[1], { base64: true });
+    zip.file(
+      file.name.replace(/\.[^/.]+$/, "") + "_resized.jpg",
+      dataUrl.split(",")[1],
+      { base64: true }
+    );
   }
 
   const blob = await zip.generateAsync({ type: "blob" });
