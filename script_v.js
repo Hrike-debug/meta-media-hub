@@ -1,227 +1,396 @@
 /* ==========================================================
-   Meta Media Hub - script_v.js
-   Full client-side logic:
-   - Auth / Sections
-   - Theme modal (T2)
-   - Image Resizer (scan + UI plumbing)
-   - AI Enhancer (Upscale, Sharpen-Pro, Denoise, HDR, OCR)
-   - Privacy Blur (programmatic only – no drawing)
-   - Preview & Download
-   All operations run in-browser. No server calls.
-   ========================================================== */
+   Meta Media Hub - script_v.js (Stable Fade + Enhancer + Resizer)
+   Image Resizer + AI Enhancer + Object Hide Blur
+   Client-side only
+========================================================== */
 
-
-/* ===========
-   Small helpers
-   =========== */
 const $ = id => document.getElementById(id);
-const elExists = id => !!$(id);
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-/* ====================
-   AUTH + SECTION LOGIC
-   ==================== */
-const pwModal = $("pwModal");
-const pwInput = $("pwInput");
-const pwBtn = $("pwBtn");
-const pwMsg = $("pwMsg");
-const statusText = $("statusText");
+/* ---------------------------
+   AUTH SYSTEM
+---------------------------- */
+const pwModal   = $("pwModal");
+const pwInput   = $("pwInput");
+const pwBtn     = $("pwBtn");
+const pwMsg     = $("pwMsg");
+const statusText= $("statusText");
 
-const AUTH_KEY = "mm_auth_v3";
-const PASSWORD = "Meta@123";
+const AUTH_KEY  = "mm_auth_v4";
+const PASSWORD  = "Meta@123";
 
-function saveAuth(v){ if(v) localStorage.setItem(AUTH_KEY, "true"); else localStorage.removeItem(AUTH_KEY); }
-function isAuthed(){ return localStorage.getItem(AUTH_KEY) === "true"; }
+function saveAuth(v){
+  if(v) localStorage.setItem(AUTH_KEY,"true");
+  else  localStorage.removeItem(AUTH_KEY);
+}
+function isAuthed(){
+  return localStorage.getItem(AUTH_KEY) === "true";
+}
 
 function showSection(name){
-  const home = $("home");
-  const imageSection = $("imageSection");
+  const home            = $("home");
+  const imageSection    = $("imageSection");
   const enhancerSection = $("enhancerSection");
 
-  if(home) home.style.display = name==="home" ? "flex" : "none";
-  if(imageSection) imageSection.style.display = name==="resize" ? "block" : "none";
-  if(enhancerSection) enhancerSection.style.display = name==="enhance" ? "block" : "none";
+  [home, imageSection, enhancerSection].forEach(el=>{
+    if(el){
+      el.style.display = "none";
+      el.classList.remove("active");
+    }
+  });
 
-  if(home) home.classList.toggle("active", name==="home");
-  if(imageSection) imageSection.classList.toggle("active", name==="resize");
-  if(enhancerSection) enhancerSection.classList.toggle("active", name==="enhance");
+  if(name==="home" && home){
+    home.style.display="flex";
+    requestAnimationFrame(()=> home.classList.add("active"));
+  }
+  if(name==="resize" && imageSection){
+    imageSection.style.display="block";
+    requestAnimationFrame(()=> imageSection.classList.add("active"));
+  }
+  if(name==="enhance" && enhancerSection){
+    enhancerSection.style.display="block";
+    requestAnimationFrame(()=> enhancerSection.classList.add("active"));
+  }
 }
 
 function unlock(){
-  if(!pwInput) return;
-  pwMsg.textContent = "";
   if(pwInput.value === PASSWORD){
     saveAuth(true);
-    if(pwModal) pwModal.style.display = "none";
-    if(statusText) statusText.textContent = "Unlocked";
+    pwModal.style.display = "none";
+    statusText.textContent = "Unlocked";
     showSection("home");
-    pwInput.value = "";
   } else {
     pwMsg.textContent = "Incorrect password";
   }
 }
-if(pwBtn) pwBtn.addEventListener("click", unlock);
-if(pwInput) pwInput.addEventListener("keydown", e => { if(e.key === "Enter") unlock(); });
+
+pwBtn.addEventListener("click", unlock);
+pwInput.addEventListener("keydown", e => { if(e.key==="Enter") unlock(); });
 
 if(isAuthed()){
-  if(pwModal) pwModal.style.display = "none";
-  if(statusText) statusText.textContent = "Unlocked";
+  pwModal.style.display="none";
+  statusText.textContent="Unlocked";
   showSection("home");
-} else {
-  if(pwModal) pwModal.style.display = "flex";
 }
 
-/* ====================
-   THEME MODAL (UNCHANGED)
-   ==================== */
-const themeBtn = $("themeBtn");
-const themeModal = $("themeModal");
-const closeTheme = $("closeTheme");
-const THEME_SAVE_KEY = "mm_theme_choice";
+/* ---------------------------
+   THEME SWITCHER
+---------------------------- */
+const themeToggle = $("themeToggle");
+const THEME_KEY   = "ui_theme";
 
-function applyThemeClass(key){
-  document.body.className = document.body.className
-    .split(" ")
-    .filter(c => !c.startsWith("theme-"))
-    .join(" ") + " theme-" + key;
-
-  try{ localStorage.setItem(THEME_SAVE_KEY, key); }catch(e){}
+function applyTheme(t){
+  if(t === "light") document.documentElement.classList.add("theme-light");
+  else              document.documentElement.classList.remove("theme-light");
+  themeToggle.textContent = t==="light" ? "☀️" : "🌙";
+  localStorage.setItem(THEME_KEY, t);
 }
 
-if(themeBtn && themeModal){
-  themeBtn.addEventListener("click", ()=>{
-    themeModal.style.display = "flex";
-  });
-}
+themeToggle.addEventListener("click", () => {
+  const current = localStorage.getItem(THEME_KEY) || "dark";
+  applyTheme(current === "dark" ? "light" : "dark");
+});
+applyTheme(localStorage.getItem(THEME_KEY) || "dark");
 
-if(closeTheme && themeModal){
-  closeTheme.addEventListener("click", ()=>{
-    themeModal.style.display = "none";
-  });
-}
 
-document.querySelectorAll(".theme-card").forEach(card=>{
-  card.addEventListener("click", ()=>{
-    const t = card.getAttribute("data-theme");
-    if(!t) return;
-    applyThemeClass(t);
-    if(themeModal) themeModal.style.display = "none";
-  });
+/* ---------------------------
+   NAVIGATION
+---------------------------- */
+$("btnImage").addEventListener("click", ()=>showSection("resize"));
+$("btnEnhancer").addEventListener("click", ()=>showSection("enhance"));
+$("backHomeFromImage").addEventListener("click", ()=>showSection("home"));
+$("backHomeFromEnhancer").addEventListener("click", ()=>showSection("home"));
+
+/* ABOUT MODAL */
+$("aboutBtn").addEventListener("click",()=> $("aboutModal").style.display="flex");
+$("closeAbout").addEventListener("click",()=> $("aboutModal").style.display="none");
+
+
+/* ==========================================================
+   IMAGE RESIZER – Smart Human Detection
+========================================================== */
+let imageFiles        = [];
+let imageDetectionMap = {};
+let cocoModel         = null;
+
+const dropImage     = $("dropImage");
+const imageInput    = $("imageInput");
+const imageFileList = $("imageFileList");
+const smartBanner   = $("smartBanner");
+const bannerIcon    = $("bannerIcon");
+const bannerText    = $("bannerText");
+const imgStatus     = $("imgStatus");
+const imgAiToggle   = $("imgAiToggle");
+
+dropImage.addEventListener("click", ()=> imageInput.click());
+imageInput.addEventListener("change", async e=>{
+  imageFiles = Array.from(e.target.files);
+  await handleNewImages();
 });
 
-const savedTheme = localStorage.getItem(THEME_SAVE_KEY) || "flaming-orange";
-applyThemeClass(savedTheme.replace("theme-",""));
+dropImage.addEventListener("dragover", e=>{
+  e.preventDefault();
+  dropImage.style.background = "rgba(255,255,255,0.05)";
+});
+dropImage.addEventListener("dragleave", ()=> dropImage.style.background = "");
+dropImage.addEventListener("drop", async e=>{
+  e.preventDefault();
+  dropImage.style.background = "";
+  imageFiles = Array.from(e.dataTransfer.files);
+  await handleNewImages();
+});
 
-/* ====================
-   NAVIGATION
-   ==================== */
-const btnImage = $("btnImage");
-const btnEnhancer = $("btnEnhancer");
-const backHomeFromImage = $("backHomeFromImage");
-const backHomeFromEnhancer = $("backHomeFromEnhancer");
+function refreshImageList(){
+  if(!imageFiles.length){
+    imageFileList.innerHTML="No files uploaded.";
+    smartBanner.style.display="none";
+    return;
+  }
 
-if(btnImage) btnImage.addEventListener("click", ()=> showSection("resize"));
-if(btnEnhancer) btnEnhancer.addEventListener("click", ()=> showSection("enhance"));
-if(backHomeFromImage) backHomeFromImage.addEventListener("click", ()=> showSection("home"));
-if(backHomeFromEnhancer) backHomeFromEnhancer.addEventListener("click", ()=> showSection("home"));
+  imageFileList.innerHTML = imageFiles.map((f,i)=>{
+    const st = imageDetectionMap[f.name] || "unknown";
+    let icon="⏳", msg="Scanning…";
+    if(st==="person"){ icon="👤"; msg="Human detected";}
+    if(st==="none"){ icon="❌"; msg="No person";}
+    return `
+      <div class="file-row">
+        <span>${icon}</span>
+        <div><b>${i+1}. ${f.name}</b><br><small>${msg}</small></div>
+      </div>`;
+  }).join("");
+}
 
-/* =========================
-   IMAGE RESIZER (scan)
-   ========================= */
+async function loadModel(){
+  imgStatus.textContent="Loading AI model…";
+  cocoModel = await cocoSsd.load();
+  imgStatus.textContent="Model ready";
+}
 
-let imageFiles = [];
-let imageDetectionMap = {};
-let cocoModel = null;
+async function detectPerson(imgEl){
+  await loadModel();
+  const preds = await cocoModel.detect(imgEl);
+  return preds.some(p => p.class === "person");
+}
 
-/* (unchanged resizer logic continues exactly as before) */
+async function handleNewImages(){
+  smartBanner.style.display="flex";
+  bannerIcon.textContent="⏳";
+  bannerText.textContent="Scanning images…";
+  imgStatus.textContent="Scanning…";
 
-/* ============================
-   AI ENHANCER SECTION
-   ============================ */
+  imageDetectionMap={};
+  let found=0;
 
-let enhanceFiles = [];
+  for(const file of imageFiles){
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.src = url;
+    await img.decode();
+
+    const person = await detectPerson(img);
+    imageDetectionMap[file.name] = person ? "person" : "none";
+    if(person) found++;
+
+    refreshImageList();
+    URL.revokeObjectURL(url);
+  }
+
+  bannerIcon.textContent = found ? "🟢" : "⚪";
+  bannerText.innerHTML = found
+    ? `Smart Human Detection:<br>People in <b>${found}</b> image(s).`
+    : `No people detected.`;
+
+  imgAiToggle.classList.toggle("active", found>0);
+  imgStatus.textContent="Scan complete.";
+}
+
+
+/* ==========================================================
+   AI IMAGE ENHANCER – OCR, HDR & Strong Blur
+========================================================== */
+
+let enhanceFiles   = [];
 const enhanceCanvas = document.createElement("canvas");
-const enhanceCtx = enhanceCanvas.getContext("2d");
-let currentEnhFile = null;
+const enhanceCtx    = enhanceCanvas.getContext("2d");
+let hideRectEnh     = null;
 
-const dropEnhance = $("dropEnhance");
-const enhanceInput = $("enhanceInput");
-const enhFileInfo = $("enhFileInfo");
-const enhQuality = $("enhQuality");
+const dropEnhance   = $("dropEnhance");
+const enhanceInput  = $("enhanceInput");
+const enhFileInfo   = $("enhFileInfo");
+const enhQuality    = $("enhQuality");
 const enhQualityVal = $("enhQualityVal");
-const enhRunBtn = $("enhRunBtn");
+const enhRunBtn     = $("enhRunBtn");
 const enhPreviewBtn = $("enhPreviewBtn");
-const enhOCR = $("enhOCR");
-const enhHDR = $("enhHDR");
-const enhDenoise = $("enhDenoise");
-const enhUpscale2x = $("enhUpscale2x");
-const enhUpscale4x = $("enhUpscale4x");
-const enhFaceEnhance = $("enhFaceEnhance");
-const enhHide = $("enhHide");
-const hideAreaBtn = $("hideAreaBtn");
-const enhStatus = $("enhStatus");
+const enhOCR        = $("enhOCR");
+const enhHDR        = $("enhHDR");
+const enhHide       = $("enhHide");
+const hideAreaBtn   = $("hideAreaBtn");
+const hideModal     = $("hideModal");
+const hidePreview   = $("hidePreview");
+const hideCanvas    = $("hideCanvas");
+const hideRect      = $("hideRect");
+const closeHide     = $("closeHide");
+const saveHide      = $("saveHide");
+const clearHide     = $("clearHide");
+const enhStatus     = $("enhStatus");
 
-const previewArea = $("previewArea");
-const beforeImg = $("beforeImg");
-const afterImg = $("afterImg");
+dropEnhance.addEventListener("click", ()=> enhanceInput.click());
+enhanceInput.addEventListener("change", async e=>{
+  enhanceFiles = Array.from(e.target.files);
+  if(!enhanceFiles.length) return;
+  await loadEnhImage(enhanceFiles[0]);
+});
 
-let hideRectEnh = null;
-let imageNaturalW = 0, imageNaturalH = 0;
+async function loadEnhImage(file){
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.src = url;
+  await img.decode();
 
-/* =================
-   ENHANCE RUN
-   ================= */
-if(enhRunBtn){
-  enhRunBtn.addEventListener("click", async ()=>{
-    if(!enhanceCanvas.width){
-      alert("Upload an image first!");
-      return;
-    }
-    if(enhStatus) enhStatus.textContent = "Processing…";
+  enhanceCanvas.width = img.width;
+  enhanceCanvas.height = img.height;
+  enhanceCtx.drawImage(img,0,0);
 
-    const q = enhQuality ? (parseInt(enhQuality.value) || 92)/100 : 0.92;
-    const outDataUrl = enhanceCanvas.toDataURL("image/jpeg", q);
+  enhFileInfo.textContent = `${file.name} — ${img.width}×${img.height}px`;
+  enhStatus.textContent = "Image loaded. Apply enhancements.";
 
-    afterImg.src = outDataUrl;
-
-    if(enhStatus) enhStatus.textContent = "Enhancement complete. Download started.";
-
-    downloadDataUrl(outDataUrl, `enhanced_${Date.now()}.jpg`);
-  });
+  hideRectEnh = null;
+  URL.revokeObjectURL(url);
 }
 
-/* ===========================
-   ✅ PREVIEW FIX — INLINE ONLY (NO NEW TAB)
-   =========================== */
-if(enhPreviewBtn){
-  enhPreviewBtn.addEventListener("click", ()=>{
-    if(!enhanceCanvas.width){
-      alert("Upload an image first!");
-      return;
-    }
+enhQuality.addEventListener("input",()=> enhQualityVal.textContent = enhQuality.value+"%");
 
-    const url = enhanceCanvas.toDataURL(
-      "image/jpeg",
-      (parseInt(enhQuality?.value || 92) / 100)
-    );
+enhPreviewBtn.addEventListener("click",()=>{
+  if(!enhanceCanvas.width) return alert("Upload image first");
+  window.open(enhanceCanvas.toDataURL("image/jpeg",0.92),"_blank");
+});
 
-    if(beforeImg) beforeImg.src = enhanceCanvas.toDataURL("image/jpeg");
-    if(afterImg)  afterImg.src  = url;
+enhRunBtn.addEventListener("click",()=>{
+  if(!enhanceCanvas.width) return alert("Upload image first!");
+  let data = enhanceCtx.getImageData(0,0,enhanceCanvas.width,enhanceCanvas.height);
 
-    if(enhStatus) enhStatus.textContent = "Preview updated below.";
-  });
+  if(enhOCR.checked) data = applyOCRBoost(data);
+  if(enhHDR.checked) data = applyHDRToneMap(data);
+
+  enhanceCtx.putImageData(data,0,0);
+
+  if(enhHide.checked && hideRectEnh){
+    blurRegionOnCanvas(enhanceCtx, hideRectEnh);
+  }
+
+  download(enhanceCanvas.toDataURL("image/jpeg",(parseInt(enhQuality.value)||92)/100),
+           "enhanced.jpg");
+  enhStatus.textContent="Done! Downloaded.";
+});
+
+/* OCR BOOST */
+function applyOCRBoost(imageData){
+  const d = imageData.data;
+  for(let i=0;i<d.length;i+=4){
+    const avg = (d[i]+d[i+1]+d[i+2])/3;
+    const b = avg>128 ? 1.1 : 1.25;
+    d[i] = Math.min(255,d[i]*b);
+    d[i+1] = Math.min(255,d[i+1]*b);
+    d[i+2] = Math.min(255,d[i+2]*b);
+  }
+  return imageData;
 }
 
-/* ============================
-   Utility: download dataURL
-   ============================ */
-function downloadDataUrl(dataUrl, filename){
-  const a = document.createElement("a");
-  a.href = dataUrl;
-  a.download = filename;
+/* HDR Tone Map */
+function applyHDRToneMap(imageData){
+  const d = imageData.data;
+  for(let i=0;i<d.length;i+=4){
+    d[i]   = tone(d[i]);
+    d[i+1] = tone(d[i+1]);
+    d[i+2] = tone(d[i+2]);
+  }
+  return imageData;
+}
+function tone(v){
+  if(v<100) return Math.min(255,v*1.25);
+  if(v>180) return v*0.85;
+  return v;
+}
+
+/* Strong multi-pass blur */
+function blurRegionOnCanvas(ctx,box){
+  const {x,y,width,height}=box;
+  if(width<=0 || height<=0) return;
+
+  let region = ctx.getImageData(x,y,width,height);
+
+  const passes=7;
+  for(let i=0;i<passes;i++){
+    region = gaussianBlur(region,width,height);
+  }
+  ctx.putImageData(region,x,y);
+}
+
+function gaussianBlur(imgData,w,h){
+  const weights=[0.1201,0.2339,0.2920,0.2339,0.1201];
+  const half=2;
+  const d=imgData.data;
+  const tmp = new Uint8ClampedArray(d);
+
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      let r=0,g=0,b=0;
+      for(let k=-half;k<=half;k++){
+        const px=Math.min(w-1,Math.max(0,x+k));
+        const idx=(y*w+px)*4;
+        const wgt=weights[k+half];
+        r+=tmp[idx]*wgt;
+        g+=tmp[idx+1]*wgt;
+        b+=tmp[idx+2]*wgt;
+      }
+      const id=(y*w+x)*4;
+      d[id]=r; d[id+1]=g; d[id+2]=b;
+    }
+  }
+  return imgData;
+}
+
+function download(url,name){
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=name;
   a.click();
 }
 
-/* ============================
-   End of script
-   ============================ */
+/* Object Hide area selection */
+hideAreaBtn.addEventListener("click",()=>{
+  if(!enhanceCanvas.width) return alert("Upload image first");
+  hideModal.style.display="flex";
+  hidePreview.src = enhanceCanvas.toDataURL("image/jpeg",0.92);
+});
+
+let dragging=false,startX=0,startY=0;
+
+hideCanvas.addEventListener("mousedown",e=>{
+  if(!enhHide.checked) return;
+  dragging=true;
+  startX=e.offsetX; startY=e.offsetY;
+  hideRectEnh = {x:startX,y:startY,width:0,height:0};
+  hideRect.style.display="block";
+});
+
+hideCanvas.addEventListener("mousemove",e=>{
+  if(!dragging) return;
+  hideRectEnh.width  = e.offsetX-startX;
+  hideRectEnh.height = e.offsetY-startY;
+  hideRect.style.left   = hideRectEnh.x+"px";
+  hideRect.style.top    = hideRectEnh.y+"px";
+  hideRect.style.width  = hideRectEnh.width+"px";
+  hideRect.style.height = hideRectEnh.height+"px";
+});
+
+document.addEventListener("mouseup",()=> dragging=false);
+
+closeHide.addEventListener("click",()=> hideModal.style.display="none");
+clearHide.addEventListener("click",()=>{
+  hideRectEnh=null;
+  hideRect.style.display="none";
+});
+saveHide.addEventListener("click",()=> hideModal.style.display="none");
+
+/* Default view */
+showSection("home");
