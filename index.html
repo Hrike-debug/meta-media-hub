@@ -1,259 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Meta Media Hub — Image Suite</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meta Media Hub — Image Suite</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
 
-  <div class="app-wrap">
+  <div class="app-wrap">
 
-        <header class="topbar">
-      <div class="brand">
-        <div class="logo">MM</div>
-        <div>
-          <h1>Meta Media Hub</h1>
-          <span class="tagline">Internal image toolkit for META e-learning</span>
-        </div>
-      </div>
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">MM</div>
+        <div>
+          <h1>Meta Media Hub</h1>
+          <span class="tagline">Internal image toolkit for META e-learning</span>
+        </div>
+      </div>
 
-      <div class="right">
-                <button id="themeBtn" class="about-btn" title="Choose a visual theme">🎨</button>
-        <button id="aboutBtn" class="about-btn" title="About this tool">i</button>
-        <span id="statusText" class="status">Locked</span>
-      </div>
-    </header>
+      <div class="right">
+        <button id="themeBtn" class="about-btn" title="Choose a visual theme">🎨</button>
+        <button id="aboutBtn" class="about-btn" title="About this tool">i</button>
+        <button id="themeToggle" class="theme-toggle" title="Toggle light/dark mode">🌙</button>
+        <span id="statusText" class="status">Locked</span>
+      </div>
+    </header>
 
-        <div id="pwModal" class="modal" style="display:flex">
-      <div class="modal-panel pw-panel">
-        <h2>Enter Password</h2>
-        <p class="small">Unlock the Meta Media Hub</p>
-        <input id="pwInput" class="input" type="password" placeholder="Password" />
-        <button id="pwBtn" class="btn primary full">Unlock</button>
-        <p id="pwMsg" class="error"></p>
-      </div>
-      <footer class="footer">
-        Created by Mukesh Yadav • META E-learning Team
-      </footer>
-    </div>
-    
-        <div id="themeModal" class="modal" style="display:none">
-      <div class="modal-panel theme-panel">
-        <div class="section-header">
-          <h2>Choose Theme</h2>
-          <button id="closeTheme" class="back-btn">Close</button>
-        </div>
-        <div class="theme-options">
-          <div class="tool-card theme-card theme-flaming-orange" data-theme="flaming-orange">
-            <h3>Flaming Orange</h3>
-          </div>
-          <div class="tool-card theme-card theme-dark-glass" data-theme="dark-glass">
-            <h3>Dark Glass (Purple)</h3>
-          </div>
-          <div class="tool-card theme-card theme-cyber-tech" data-theme="cyber-tech">
-            <h3>Cyber Tech (Green)</h3>
-          </div>
-          <div class="tool-card theme-card theme-retro-beige" data-theme="retro-beige">
-            <h3>Retro Beige (Light)</h3>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- PASSWORD MODAL -->
+    <div id="pwModal" class="modal" style="display:flex">
+      <div class="modal-panel pw-panel">
+        <h2>Enter Password</h2>
+        <p class="small">Unlock the Meta Media Hub</p>
+        <input id="pwInput" class="input" type="password" placeholder="Password" />
+        <button id="pwBtn" class="btn primary full">Unlock</button>
+        <p id="pwMsg" class="error"></p>
+      </div>
+    </div>
 
-        <section id="home" class="home-section" style="display:none">
-      <div class="tool-card" id="btnImage">
-        <div class="icon">🖼️</div>
-        <h3>Image Tools</h3>
-        <p>Resize • Smart Center • Human Detection • ZIP export</p>
-      </div>
+    <!-- HOME (TWO TOOLS) -->
+    <section id="home" class="home-section" style="display:none">
+      <div class="tool-card" id="btnImage">
+        <div class="icon">🖼️</div>
+        <h3>Image Tools</h3>
+        <p>Resize • Smart Center • Human Detection • ZIP export</p>
+      </div>
 
-      <div class="tool-card" id="btnEnhancer">
-        <div class="icon">✨</div>
-        <h3>AI Image Enhancer</h3>
-        <p>Upscale • Sharpen • Denoise • HDR • Text clarity</p>
-      </div>
-    </section>
+      <div class="tool-card" id="btnEnhancer">
+        <div class="icon">✨</div>
+        <h3>AI Image Enhancer</h3>
+        <p>Upscale • Sharpen • Denoise • HDR • Text clarity</p>
+      </div>
+    </section>
 
-        <section id="imageSection" class="section" style="display:none">
+    <!-- IMAGE RESIZER SECTION -->
+    <section id="imageSection" class="section" style="display:none">
 
-      <div class="section-header">
-        <div>
-          <h2>Image Tools</h2>
-          <p class="subtitle">Batch resize with smart human detection & manual focus.</p>
-        </div>
-        <button id="backHomeFromImage" class="back-btn">← Home</button>
-      </div>
+      <div class="section-header">
+        <div>
+          <h2>Image Tools</h2>
+          <p class="subtitle">Batch resize with smart human detection & manual focus.</p>
+        </div>
+        <button id="backHomeFromImage" class="back-btn">← Home</button>
+      </div>
 
-      <div class="panel">
-        <div id="dropImage" class="dropzone">
-          Click or drag & drop images here (multiple)
-          <span class="help-tip" data-tip="Upload multiple images for batch resizing and export as ZIP.">?</span>
-        </div>
-        <input id="imageInput" type="file" accept="image/*" multiple>
-        
-        <div id="smartBanner" class="status-banner" style="display:none">
-          <div id="bannerIcon" class="icon-small">⚪</div>
-          <div id="bannerText">Scanning images…</div>
+      <div class="panel">
+        <div id="dropImage" class="dropzone">
+          Click or drag & drop images here (multiple)
+          <span class="help-tip" data-tip="Upload multiple images for batch resizing and export as ZIP.">?</span>
+        </div>
+        <input id="imageInput" type="file" accept="image/*" multiple>
+
+        <div id="imageFileList" class="file-list">No files uploaded.</div>
+
+        <div class="two-input">
+          <input id="imgWidth" class="input" type="number" placeholder="Width (px)">
+          <input id="imgHeight" class="input" type="number" placeholder="Height (px)">
         </div>
 
-        <div id="imageFileList" class="file-list">No files uploaded.</div>
+        <div class="controls">
+          <div class="mini-control">
+            <label>Quality</label>
+            <span class="help-tip" data-tip="Controls output compression. 85–92% is best for LMS quality vs size.">?</span>
+          </div>
+          <input id="imgQuality" type="range" min="60" max="100" value="90">
+          <span id="imgQualityVal">90%</span>
 
-        <div class="two-input">
-          <input id="imgWidth" class="input" type="number" placeholder="Width (px)">
-          <input id="imgHeight" class="input" type="number" placeholder="Height (px)">
-        </div>
+          <div class="flex-spacer"></div>
 
-        <div class="controls">
-          <div class="mini-control">
-            <label>Quality</label>
-            <span class="help-tip" data-tip="Controls output compression. 85–92% is best for LMS quality vs size.">?</span>
-          </div>
-          <input id="imgQuality" type="range" min="60" max="100" value="90">
-          <span id="imgQualityVal">90%</span>
+          <div id="imgAiToggle" class="ai-switch" title="Smart Human Detection">
+            <span class="help-tip" data-tip="Automatically detects people in images for smarter cropping (runs locally).">?</span>
+            <div class="track"><div class="ball"></div></div>
+            <span class="label-off">Smart Detection: OFF</span>
+            <span class="label-on">Smart Detection: ON</span>
+          </div>
+        </div>
 
-          <div class="flex-spacer"></div>
+        <div class="btn-row">
+          <button id="imgPreviewBtn" class="btn ghost">
+            Preview First
+            <span class="help-tip" data-tip="Preview the resized result before exporting.">?</span>
+          </button>
 
-          <div id="imgAiToggle" class="ai-switch" title="Smart Human Detection">
-            <span class="help-tip" data-tip="Automatically detects people in images for smarter cropping (runs locally).">?</span>
-            <div class="track"><div class="ball"></div></div>
-            <span class="label-off">Smart Detection: OFF</span>
-            <span class="label-on">Smart Detection: ON</span>
-          </div>
-        </div>
+          <button id="focusBtn" class="btn ghost">
+            Manual Focus
+            <span class="help-tip" data-tip="Manually adjust crop focus for key subjects.">?</span>
+          </button>
 
-        <div class="btn-row">
-          <button id="imgPreviewBtn" class="btn ghost">
-            Preview First
-            <span class="help-tip" data-tip="Preview the resized result before exporting.">?</span>
-          </button>
+          <button id="imgProcessBtn" class="btn primary">
+            Process & Download ZIP
+            <span class="help-tip" data-tip="Processes all images and downloads them as a ZIP archive.">?</span>
+          </button>
+        </div>
 
-          <button id="focusBtn" class="btn ghost">
-            Manual Focus
-            <span class="help-tip" data-tip="Manually adjust crop focus for key subjects.">?</span>
-          </button>
+        <div class="progress"><div id="imgProgress" class="bar"></div></div>
+        <p id="imgStatus" class="status-text">Ready.</p>
+      </div>
 
-          <button id="imgProcessBtn" class="btn primary">
-            Process & Download ZIP
-            <span class="help-tip" data-tip="Processes all images and downloads them as a ZIP archive.">?</span>
-          </button>
-        </div>
+      <footer class="footer">
+        Created by Mukesh Yadav • META E-learning Team
+      </footer>
+    </section>
 
-        <div class="progress"><div id="imgProgress" class="bar"></div></div>
-        <p id="imgStatus" class="status-text">Ready.</p>
-      </div>
-      
-      <footer class="footer">
-        Created by Mukesh Yadav • META E-learning Team
-      </footer>
-    </section>
+    <!-- AI IMAGE ENHANCER SECTION -->
+    <section id="enhancerSection" class="section" style="display:none">
+      <div class="section-header">
+        <div>
+          <h2>AI Image Enhancer</h2>
+          <p class="subtitle">Improve quality: upscale, sharpen, denoise, HDR & text clarity — right in the browser.</p>
+        </div>
+        <button id="backHomeFromEnhancer" class="back-btn">← Home</button>
+      </div>
 
-        <section id="enhancerSection" class="section" style="display:none">
-      <div class="section-header">
-        <div>
-          <h2>AI Image Enhancer</h2>
-          <p class="subtitle">Improve quality: upscale, sharpen, denoise, HDR & text clarity — right in the browser.</p>
-        </div>
-        <button id="backHomeFromEnhancer" class="back-btn">← Home</button>
-      </div>
+      <div class="panel enhancer-layout">
+        <div class="enh-left">
+          <h3 class="panel-title">Upload Image</h3>
+          <div id="dropEnhance" class="dropzone">
+            Click or drag & drop a single image
+            <span class="help-tip" data-tip="Upload one image for enhancement and export.">?</span>
+          </div>
+          <input id="enhanceInput" type="file" accept="image/*">
+          <div id="enhFileInfo" class="file-list small-file">No image selected.</div>
 
-      <div class="panel enhancer-layout">
-        <div class="enh-left">
-          <h3 class="panel-title">Upload Image</h3>
-          <div id="dropEnhance" class="dropzone">
-            Click or drag & drop a single image
-            <span class="help-tip" data-tip="Upload one image for enhancement and export.">?</span>
-          </div>
-          <input id="enhanceInput" type="file" accept="image/*">
-          <div id="enhFileInfo" class="file-list small-file">No image selected.</div>
+          <p class="small-muted">
+            Ideal for portraits, key visuals, LMS screenshots, thumbnails and hero images.
+          </p>
+        </div>
 
-          <p class="small-muted">
-            Ideal for portraits, key visuals, LMS screenshots, thumbnails and hero images.
-          </p>
-        </div>
+        <div class="enh-right">
+          <h3 class="panel-title">Enhancement Options</h3>
 
-        <div class="enh-right">
-          <h3 class="panel-title">Enhancement Options</h3>
+          <div class="ai-options">
 
-          <div class="ai-options">
+            <label class="ai-option">
+              <input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span>
+              <span class="help-tip" data-tip="Doubles image resolution for better clarity.">?</span>
+            </label>
 
-            <label class="ai-option">
-              <input type="checkbox" id="enhUpscale2x"><span>Upscale ×2</span>
-              <span class="help-tip" data-tip="Doubles image resolution for better clarity.">?</span>
-            </label>
+            <label class="ai-option">
+              <input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span>
+              <span class="help-tip" data-tip="Quadruples resolution (very large output size).">?</span>
+            </label>
 
-            <label class="ai-option">
-              <input type="checkbox" id="enhUpscale4x"><span>Upscale ×4</span>
-              <span class="help-tip" data-tip="Quadruples resolution (very large output size).">?</span>
-            </label>
+            <label class="ai-option">
+              <input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span>
+              <span class="help-tip" data-tip="Enhances facial and subject detail.">?</span>
+            </label>
 
-            <label class="ai-option">
-              <input type="checkbox" id="enhFaceEnhance"><span>Boost Faces & Detail</span>
-              <span class="help-tip" data-tip="Enhances facial and subject detail.">?</span>
-            </label>
+            <label class="ai-option">
+              <input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span>
+              <span class="help-tip" data-tip="Removes grain and applies sharpening.">?</span>
+            </label>
 
-            <label class="ai-option">
-              <input type="checkbox" id="enhDenoise"><span>Denoise & Sharpen</span>
-              <span class="help-tip" data-tip="Removes grain and applies sharpening.">?</span>
-            </label>
+            <label class="ai-option">
+              <input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span>
+              <span class="help-tip" data-tip="Improves text visibility for screenshots and OCR.">?</span>
+            </label>
 
-            <label class="ai-option">
-              <input type="checkbox" id="enhOCR"><span>Text / OCR Clarity</span>
-              <span class="help-tip" data-tip="Improves text visibility for screenshots and OCR.">?</span>
-            </label>
+            <label class="ai-option">
+              <input type="checkbox" id="enhHDR"><span>HDR Boost</span>
+              <span class="help-tip" data-tip="Enhances shadows and highlights.">?</span>
+            </label>
 
-            <label class="ai-option">
-              <input type="checkbox" id="enhHDR"><span>HDR Boost</span>
-              <span class="help-tip" data-tip="Enhances shadows and highlights.">?</span>
-            </label>
+            <label class="ai-option">
+              <input type="checkbox" id="enhHide"><span>Privacy Blur</span>
+              <span class="help-tip" data-tip="Blurs sensitive areas like IDs or faces.">?</span>
+            </label>
 
-            <label class="ai-option">
-              <input type="checkbox" id="enhHide"><span>Privacy Blur</span>
-              <span class="help-tip" data-tip="Blurs sensitive areas like IDs or faces.">?</span>
-            </label>
+          </div>
 
-          </div>
+          <div class="two-input">
+            <div class="mini-control">
+              <label class="small-label">Output Quality</label>
+              <span class="help-tip" data-tip="92% is ideal for sharp output with reasonable file size.">?</span>
+              <input id="enhQuality" type="range" min="70" max="100" value="92">
+              <span id="enhQualityVal" class="mini-val">92%</span>
+            </div>
+          </div>
 
-          <div class="two-input">
-            <div class="mini-control">
-              <label class="small-label">Output Quality</label>
-              <span class="help-tip" data-tip="92% is ideal for sharp output with reasonable file size.">?</span>
-              <input id="enhQuality" type="range" min="70" max="100" value="92">
-              <span id="enhQualityVal" class="mini-val">92%</span>
-            </div>
-          </div>
+          <div class="btn-row">
+            <button id="enhPreviewBtn" class="btn ghost">
+              Preview
+              <span class="help-tip" data-tip="Preview output without downloading.">?</span>
+            </button>
 
-          <div class="btn-row">
-            <button id="enhPreviewBtn" class="btn ghost">
-              Preview
-              <span class="help-tip" data-tip="Preview output without downloading.">?</span>
-            </button>
+            <button id="enhRunBtn" class="btn primary">
+              Enhance & Download
+              <span class="help-tip" data-tip="Applies selected enhancements and downloads the image.">?</span>
+            </button>
+          </div>
 
-            <button id="enhRunBtn" class="btn primary">
-              Enhance & Download
-              <span class="help-tip" data-tip="Applies selected enhancements and downloads the image.">?</span>
-            </button>
-        </div>
+          <div class="progress"><div id="enhProgress" class="bar"></div></div>
+          <p id="enhStatus" class="status-text">Waiting for image.</p>
+        </div>
+      </div>
 
-          <div class="progress"><div id="enhProgress" class="bar"></div></div>
-          <p id="enhStatus" class="status-text">Waiting for image.</p>
-        </div>
-      </div>
-      
-          </section>
+      <!-- PREVIEW AREA -->
+      <div class="panel" style="margin-top:14px">
+        <div class="panel-title">Preview</div>
 
-    <footer class="footer" style="margin-top:18px">
-      Created by Mukesh Yadav • META E-learning Team
-    </footer>
+        <div id="previewArea" class="preview-area" aria-hidden="true">
+          <img id="beforeImg" alt="Before" />
+          <div id="afterLayer" class="after-layer">
+            <img id="afterImg" alt="After" />
+          </div>
+        </div>
+      </div>
 
-  </div>
+    </section>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <footer class="footer" style="margin-top:18px">
+      Created by Mukesh Yadav • META E-learning Team
+    </footer>
 
-    <script src="script_v.js"></script>
+  </div>
+
+  <!-- LIBRARIES -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <!-- MAIN SCRIPT -->
+  <script src="script_v.js"></script>
 </body>
 </html>
