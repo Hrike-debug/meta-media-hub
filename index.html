@@ -189,34 +189,15 @@
         </div>
       </div>
 
-      <!-- ANNOTATION / PREVIEW AREA (shared) -->
+      <!-- PREVIEW AREA (Annotation Removed) -->
       <div class="panel" style="margin-top:14px">
-        <div class="panel-title">Annotate / Preview</div>
+        <div class="panel-title">Preview</div>
 
         <div id="previewArea" class="preview-area" aria-hidden="true">
           <img id="beforeImg" alt="Before" />
-          <div id="afterLayer" class="after-layer"><img id="afterImg" alt="After" /></div>
-
-          <!-- Annotation canvas overlays the preview area -->
-          <canvas id="annoCanvas" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto;"></canvas>
-          <div id="annoHandle" class="handle" style="display:none"></div>
-        </div>
-
-        <!-- Annotation toolbar (Option B) -->
-        <div id="annoToolbar" class="annotation-toolbar" style="display:none">
-          <div class="controls-row">
-            <button class="anno-btn" data-tool="rect">Rectangle</button>
-            <button class="anno-btn" data-tool="arrow">Arrow</button>
-            <button class="anno-btn" data-tool="text">Text</button>
-            <button class="anno-btn" data-tool="highlight">Highlight</button>
-            <button class="anno-btn" data-tool="blur">Blur area</button>
-            <button class="anno-btn" id="annUndo">Undo</button>
-            <button class="anno-btn" id="annClear">Clear</button>
-            <label class="anno-control">Color <input id="annColor" type="color" value="#ff7a3c"></label>
-            <label class="anno-control">Size <input id="annSize" type="range" min="1" max="30" value="4"></label>
-            <button id="annApply" class="btn primary">Apply</button>
+          <div id="afterLayer" class="after-layer">
+            <img id="afterImg" alt="After" />
           </div>
-          <div class="small muted" style="margin-top:8px">Draw on the image, then click Apply to merge annotations to the current enhanced image (client-only).</div>
         </div>
       </div>
 
