@@ -1,6 +1,6 @@
 /* ==========================================================
    Meta Media Hub - script_v.js
-   (LOCKED BASELINE + PREVIEW OK + SMART HUMAN RESTORED)
+   (PREVIEW OK + SMART HUMAN OK + HUMAN PROTECTION ENABLED)
 ========================================================== */
 
 const $ = (id) => document.getElementById(id);
@@ -126,7 +126,7 @@ imgQuality.addEventListener("input", () => {
   imgQualityVal.textContent = imgQuality.value + "%";
 });
 
-/* ===== SMART HUMAN DETECTION (RESTORED) ===== */
+/* ===== SMART HUMAN DETECTION ===== */
 
 async function loadCoco() {
   if (cocoModel) return cocoModel;
@@ -177,7 +177,7 @@ async function handleNewImages() {
   imgStatus.textContent = "Scan complete.";
 }
 
-/* ===== RESIZE + PREVIEW ===== */
+/* ===== RESIZE + PREVIEW (HUMAN SAFE) ===== */
 
 async function processImages(previewOnly = false) {
   if (!imageFiles.length) return alert("Upload images first");
@@ -200,16 +200,29 @@ async function processImages(previewOnly = false) {
     canvas.height = tH || img.naturalHeight;
     const ctx = canvas.getContext("2d");
 
-    const scale = Math.max(
-      canvas.width / img.naturalWidth,
-      canvas.height / img.naturalHeight
-    );
+    const hasHuman = imageDetectionMap[file.name] === "person";
+
+    let scale;
+    if (hasHuman) {
+      /* ✅ CONTAIN MODE — NEVER CUT HUMAN */
+      scale = Math.min(
+        canvas.width / img.naturalWidth,
+        canvas.height / img.naturalHeight
+      );
+    } else {
+      /* ✅ COVER MODE — NORMAL CENTER CROP */
+      scale = Math.max(
+        canvas.width / img.naturalWidth,
+        canvas.height / img.naturalHeight
+      );
+    }
 
     const scaledW = img.naturalWidth * scale;
     const scaledH = img.naturalHeight * scale;
     const offsetX = (canvas.width - scaledW) / 2;
     const offsetY = (canvas.height - scaledH) / 2;
 
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
 
     const dataUrl = canvas.toDataURL("image/jpeg", q);
