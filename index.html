@@ -1,13 +1,12 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Meta Media Hub — Image Suite (Split Slider Annotator)</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Meta Media Hub — Image Suite (Split Slider Annotator)</title>
 
-<!-- CSS -->
-<link rel="stylesheet" href="style.css" />
-
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <div class="app-wrap">
@@ -29,7 +28,7 @@
   </header>
 
   <!-- PASSWORD MODAL -->
-  <div id="pwModal" class="modal" style="display:flex">
+  <div id="pwModal" class="modal">
     <div class="modal-panel pw-panel" style="max-width:380px">
       <h2>Enter Password</h2>
       <p class="small-muted">Unlock the Meta Media Hub</p>
@@ -39,6 +38,20 @@
         <button id="pwClose" class="btn ghost" style="flex:0 0 auto">Close</button>
       </div>
       <p id="pwMsg" class="small-muted" style="color:#ff9090;margin-top:8px;min-height:18px"></p>
+    </div>
+  </div>
+
+  <!-- simple ABOUT MODAL so aboutBtn JS never errors -->
+  <div id="aboutModal" class="modal">
+    <div class="modal-panel" style="max-width:420px">
+      <h3 style="margin-top:0">About Meta Media Hub</h3>
+      <p class="small-muted">
+        Internal image toolkit for META e-learning. Features: AI enhancer, split slider,
+        annotations (rect, arrow, highlight, blur, free-draw, text) and export.
+      </p>
+      <div style="text-align:right;margin-top:16px">
+        <button id="closeAbout" class="btn ghost">Close</button>
+      </div>
     </div>
   </div>
 
@@ -71,10 +84,14 @@
       <div style="flex:1">
         <div class="panel" style="padding:12px">
           <h4 style="margin:0 0 8px 0">Upload Image</h4>
-          <div id="dropEnhance" class="dropzone panel" style="cursor:pointer;padding:18px;text-align:center">Click or drag & drop a single image</div>
+          <div id="dropEnhance" class="dropzone panel" style="cursor:pointer;padding:18px;text-align:center">
+            Click or drag & drop a single image
+          </div>
           <input id="enhanceInput" type="file" accept="image/*" style="display:none">
           <div id="enhFileInfo" class="small-muted" style="margin-top:8px">No image selected.</div>
-          <div style="margin-top:8px" class="small-muted">Ideal for portraits, screenshots, thumbnails and hero images.</div>
+          <div style="margin-top:8px" class="small-muted">
+            Ideal for portraits, screenshots, thumbnails and hero images.
+          </div>
         </div>
       </div>
 
@@ -116,11 +133,16 @@
       <div class="split-labels"><span>Before</span><span class="right">After</span></div>
 
       <div id="splitContainer" class="split-container">
-        <div class="split-before"><img id="beforeImg" src="/mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png"></div>
-        <div id="afterClip" class="split-after"><img id="afterImg" src="/mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png"></div>
+        <div class="split-before">
+          <img id="beforeImg" src="/mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png">
+        </div>
+        <!-- id changed to splitAfter to match JS -->
+        <div id="splitAfter" class="split-after">
+          <img id="afterImg" src="/mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png">
+        </div>
 
-        <!-- annotation canvas -->
-        <canvas id="splitAnnotCanvas" class="annotation-canvas"></canvas>
+        <!-- annotation canvas: id changed to annoCanvas to match JS -->
+        <canvas id="annoCanvas" class="annotation-canvas"></canvas>
 
         <!-- handle -->
         <div id="splitHandle" class="split-handle"><div class="bar"></div></div>
@@ -147,11 +169,13 @@
 
   </section>
 
-  <footer class="small-muted" style="text-align:center;margin-top:18px">Created by Mukesh Yadav • META E-learning Team</footer>
+  <footer class="small-muted" style="text-align:center;margin-top:18px">
+    Created by Mukesh Yadav • META E-learning Team
+  </footer>
 </div>
 
-<!-- Annotator modal -->
-<div id="annotModal" class="modal">
+<!-- Annotator modal (ids adjusted to match JS expectations) -->
+<div id="annotatorModal" class="modal">
   <div class="modal-panel">
     <div style="display:flex;justify-content:space-between;align-items:center">
       <h3 style="margin:0">Full Annotator</h3>
@@ -175,8 +199,11 @@
       </div>
       <div style="flex:1;position:relative">
         <div id="annotFullWrap" style="height:560px;background:#111;border-radius:8px;overflow:hidden;position:relative">
-          <img id="annotFullBase" src="/mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none"/>
-          <canvas id="annotFullCanvas" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto"></canvas>
+          <img id="annotFullBase" src="/mnt/data/8f506879-2ddd-490a-be9e-4e894f4a52ab.png"
+               style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none"/>
+          <!-- canvas id changed to annotCanvasFull to match JS -->
+          <canvas id="annotCanvasFull"
+                  style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:auto"></canvas>
         </div>
       </div>
     </div>
@@ -185,6 +212,5 @@
 
 <!-- JS -->
 <script src="script_v.js"></script>
-
 </body>
 </html>
