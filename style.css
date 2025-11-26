@@ -261,7 +261,7 @@ input[type="file"]{display:none;}
   background:#000;
   border-radius:14px;
   overflow:hidden;
-  pointer-events:auto;
+  pointer-events:none;
 }
 .preview-area img{
   width:100%;
@@ -345,92 +345,4 @@ input[type="file"]{display:none;}
 @media(max-width:760px){
   .home-section{flex-direction:column;}
   .two-input{flex-direction:column;}
-}
-
-/* =====================================================
-   ✅ THEME MODAL (SAFE ADDITION)
-===================================================== */
-
-.theme-panel{width:340px;}
-.theme-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:14px;
-}
-.close-btn{
-  background:none;
-  border:none;
-  color:var(--text);
-  font-size:18px;
-  cursor:pointer;
-}
-.theme-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:14px;
-}
-.theme-card{
-  padding:14px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:var(--panel);
-  cursor:pointer;
-  text-align:center;
-  transition:.2s;
-}
-.theme-card:hover{
-  border-color:var(--accent);
-  transform:translateY(-2px);
-}
-.theme-card span{
-  display:block;
-  font-size:13px;
-  margin-top:6px;
-}
-.swatch{height:42px;border-radius:8px;}
-.swatch.flaming{background:linear-gradient(135deg,#ff7a3c,#c65424);}
-.swatch.dark{background:linear-gradient(135deg,#8a7aff,#3b35a3);}
-.swatch.cyber{background:linear-gradient(135deg,#00ff77,#00994d);}
-.swatch.retro{background:linear-gradient(135deg,#e6b98a,#b76d2d);}
-/* ===============================
-   IMAGE RESIZER PREVIEW MODAL
-================================ */
-
-.preview-modal-panel{
-  width:90vw;
-  max-width:1100px;
-}
-
-.preview-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:12px;
-}
-
-.preview-compare{
-  display:flex;
-  gap:14px;
-}
-
-.preview-box{
-  flex:1;
-  background:#000;
-  border-radius:12px;
-  padding:10px;
-  text-align:center;
-}
-
-.preview-box img{
-  width:100%;
-  height:60vh;
-  object-fit:contain;
-  border-radius:8px;
-}
-
-.preview-label{
-  font-size:13px;
-  color:var(--muted);
-  margin-bottom:6px;
 }

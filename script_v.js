@@ -369,58 +369,9 @@ async function processImages(previewOnly = false) {
 if (imgProcessBtn) {
   imgProcessBtn.addEventListener("click", () => processImages(false));
 }
-/* ============================
-   IMAGE RESIZER FULLSCREEN PREVIEW
-   ============================ */
-
-const imgPreviewModal = document.getElementById("imgPreviewModal");
-const closeImgPreview = document.getElementById("closeImgPreview");
-const previewBeforeImg = document.getElementById("previewBeforeImg");
-const previewAfterImg = document.getElementById("previewAfterImg");
-
 if (imgPreviewBtn) {
-  imgPreviewBtn.addEventListener("click", async () => {
-
-    if (!imageFiles.length) {
-      alert("Upload images first.");
-      return;
-    }
-
-    const file = imageFiles[0]; // preview only first image (as before)
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.src = url;
-    await img.decode().catch(() => {});
-
-    const tW = parseInt(imgWidth?.value || "0", 10) || img.naturalWidth;
-    const tH = parseInt(imgHeight?.value || "0", 10) || img.naturalHeight;
-    const q = imgQuality ? (parseInt(imgQuality.value, 10) || 90) / 100 : 0.9;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = tW;
-    canvas.height = tH;
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(img, 0, 0, tW, tH);
-
-    const afterUrl = canvas.toDataURL("image/jpeg", q);
-
-    // Load modal images
-    previewBeforeImg.src = url;
-    previewAfterImg.src = afterUrl;
-
-    if (imgPreviewModal) imgPreviewModal.style.display = "flex";
-
-  });
+  imgPreviewBtn.addEventListener("click", () => processImages(true));
 }
-
-if (closeImgPreview) {
-  closeImgPreview.addEventListener("click", () => {
-    if (imgPreviewModal) imgPreviewModal.style.display = "none";
-  });
-}
-
 if (focusBtn) {
   focusBtn.addEventListener("click", () => {
     alert(
@@ -820,4 +771,3 @@ function downloadDataUrl(dataUrl, filename) {
   a.download = filename;
   a.click();
 }
-
