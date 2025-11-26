@@ -10,6 +10,7 @@
    - Preview & Download
    All operations run in-browser. No server calls.
    ========================================================== */
+window.DISABLE_ANNOTATE = true;
 
 /* ===========
    Small helpers
@@ -1075,3 +1076,4 @@ document.addEventListener("keydown", (e)=>{
 /* ============
    End of script
    ============ */
+
