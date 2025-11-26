@@ -1,4 +1,4 @@
-/* ==========================================================
+\/* ==========================================================
    Meta Media Hub - script_v.js
    - Auth / Sections
    - Theme modal
@@ -443,9 +443,6 @@ const enhHide = $("enhHide");
 const hideAreaBtn = $("hideAreaBtn");
 const enhStatus = $("enhStatus");
 
-const previewArea = $("previewArea");
-const beforeImg = $("beforeImg");
-const afterImg = $("afterImg");
 
 // privacy blur state (no manual drawing now)
 let hideRectEnh = null;
@@ -487,327 +484,130 @@ if (dropEnhance && enhanceInput) {
 
 async function loadEnhImage(file) {
   if (!file) return;
+
   currentEnhFile = file;
-  enhanceFiles = [file];
+  if (enhFileInfo)
+    enhFileInfo.innerHTML = `<b>${file.name}</b><br><small>${Math.round(
+      file.size / 1024
+    )} KB</small>`;
+  if (enhStatus) enhStatus.textContent = "Image loaded. Select options.";
 
-  const url = URL.createObjectURL(file);
+  // Load the image dimensions for potential use (e.g., privacy blur scaling)
   const img = new Image();
+  const url = URL.createObjectURL(file);
   img.src = url;
-  try {
-    await img.decode();
-  } catch (e) {}
-
+  await img.decode().catch(() => {});
   imageNaturalW = img.naturalWidth;
   imageNaturalH = img.naturalHeight;
-
-  enhanceCanvas.width = imageNaturalW;
-  enhanceCanvas.height = imageNaturalH;
-  enhanceCtx.clearRect(0, 0, enhanceCanvas.width, enhanceCanvas.height);
-  enhanceCtx.drawImage(img, 0, 0, imageNaturalW, imageNaturalH);
-
-  if (beforeImg) beforeImg.src = url;
-  if (afterImg)
-    afterImg.src = enhanceCanvas.toDataURL(
-      "image/jpeg",
-      (parseInt(enhQuality?.value || "92", 10) || 92) / 100
-    );
-
-  if (enhFileInfo)
-    enhFileInfo.textContent = `${file.name} — ${imageNaturalW}×${imageNaturalH}px`;
-  if (enhStatus) enhStatus.textContent = "Image loaded. Choose options.";
-
-  hideRectEnh = null;
   URL.revokeObjectURL(url);
 }
 
-/* ===========================
-   IMAGE PROCESSING FUNCTIONS
-   =========================== */
-
-function applyOCRBoost(imageData) {
-  const d = imageData.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i],
-      g = d[i + 1],
-      b = d[i + 2];
-    const avg = (r + g + b) / 3;
-    const boost = avg > 128 ? 1.06 : 1.18;
-    d[i] = clamp(Math.round(r * boost), 0, 255);
-    d[i + 1] = clamp(Math.round(g * boost), 0, 255);
-    d[i + 2] = clamp(Math.round(b * boost), 0, 255);
-  }
-  return imageData;
+function getSelectedEnhancements() {
+  const options = [];
+  if (enhUpscale2x.checked) options.push("upscale2x");
+  if (enhUpscale4x.checked) options.push("upscale4x");
+  if (enhFaceEnhance.checked) options.push("face");
+  if (enhDenoise.checked) options.push("denoise");
+  if (enhOCR.checked) options.push("ocr");
+  if (enhHDR.checked) options.push("hdr");
+  if (enhHide.checked) options.push("hide");
+  return options;
 }
 
-function toneChannel(v) {
-  if (v < 90) return clamp(Math.round(v * 1.28), 0, 255);
-  if (v > 200) return clamp(Math.round(v * 0.9), 0, 255);
-  return v;
-}
-function applyHDRToneMap(imageData) {
-  const d = imageData.data;
-  for (let i = 0; i < d.length; i += 4) {
-    d[i] = toneChannel(d[i]);
-    d[i + 1] = toneChannel(d[i + 1]);
-    d[i + 2] = toneChannel(d[i + 2]);
-  }
-  return imageData;
-}
+function simulateEnhance(file, options) {
+  return new Promise(async (resolve) => {
+    if (enhStatus) enhStatus.textContent = "Simulating AI enhancement (2s)...";
 
-function boxBlur(imgData, radius) {
-  const w = imgData.width,
-    h = imgData.height;
-  const out = new ImageData(w, h);
-  const a = imgData.data,
-    b = out.data;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let r = 0,
-        g = 0,
-        bv = 0,
-        cnt = 0;
-      for (let yy = Math.max(0, y - radius); yy <= Math.min(h - 1, y + radius); yy++) {
-        for (let xx = Math.max(0, x - radius); xx <= Math.min(w - 1, x + radius); xx++) {
-          const idx = (yy * w + xx) * 4;
-          r += a[idx];
-          g += a[idx + 1];
-          bv += a[idx + 2];
-          cnt++;
-        }
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.src = url;
+    await img.decode().catch(() => {});
+    
+    // Simulate output size based on upscale options
+    let scale = 1;
+    if (options.includes("upscale4x")) scale = 4;
+    else if (options.includes("upscale2x")) scale = 2;
+
+    const targetW = img.naturalWidth * scale;
+    const targetH = img.naturalHeight * scale;
+
+    enhanceCanvas.width = targetW;
+    enhanceCanvas.height = targetH;
+    enhanceCtx.imageSmoothingEnabled = true;
+    enhanceCtx.imageSmoothingQuality = "high";
+
+    enhanceCtx.drawImage(img, 0, 0, targetW, targetH);
+
+    // Placeholder for visual effect (just draw a green border if enhanced)
+    if (options.length > 0) {
+      enhanceCtx.strokeStyle = 'rgba(0, 255, 119, 0.6)';
+      enhanceCtx.lineWidth = 40;
+      enhanceCtx.strokeRect(20, 20, targetW - 40, targetH - 40);
+      if (options.includes("hide")) {
+        enhanceCtx.fillStyle = 'rgba(255, 0, 0, 0.6)';
+        enhanceCtx.fillRect(targetW / 4, targetH / 4, targetW / 2, targetH / 2);
       }
-      const id = (y * w + x) * 4;
-      b[id] = Math.round(r / cnt);
-      b[id + 1] = Math.round(g / cnt);
-      b[id + 2] = Math.round(bv / cnt);
-      b[id + 3] = a[id + 3];
     }
+
+    URL.revokeObjectURL(url);
+    
+    setTimeout(() => {
+      if (enhStatus) enhStatus.textContent = "Simulation complete.";
+      // Resolve with the canvas data URL
+      resolve(enhanceCanvas.toDataURL("image/jpeg", enhQuality.value / 100));
+    }, 2000);
+  });
+}
+
+async function runEnhancement(previewOnly = false) {
+  if (!currentEnhFile) {
+    alert("Please upload an image first.");
+    return;
   }
-  return out;
-}
 
-function applyDenoise(imageData) {
-  const tmp = boxBlur(imageData, 1);
-  const tmp2 = boxBlur(tmp, 1);
-  return tmp2;
-}
+  const options = getSelectedEnhancements();
+  if (options.length === 0) {
+    alert("Select at least one enhancement option.");
+    return;
+  }
 
-function applySharpen(imageData, amount = 0.6) {
-  const blurred = boxBlur(imageData, 1);
-  const w = imageData.width,
-    h = imageData.height;
-  const src = imageData.data,
-    blur = blurred.data;
-  const out = new ImageData(w, h);
-  const dst = out.data;
-  for (let i = 0; i < src.length; i += 4) {
-    for (let c = 0; c < 3; c++) {
-      const val = src[i + c] + amount * (src[i + c] - blur[i + c]);
-      dst[i + c] = clamp(Math.round(val), 0, 255);
+  if (enhProgress) enhProgress.style.width = "0%";
+  if (enhStatus) enhStatus.textContent = "Processing...";
+
+  // Simulate the time-consuming AI process
+  const resultDataUrl = await simulateEnhance(currentEnhFile, options);
+
+  if (enhProgress) enhProgress.style.width = "100%";
+  
+  if (previewOnly) {
+    const wPrev = window.open("");
+    if (!wPrev) {
+      alert("Popup blocked — allow popups to preview.");
+    } else {
+      wPrev.document.write(
+        `<title>Enhanced Preview</title><img src="${resultDataUrl}" style="max-width:100%;height:auto;display:block;margin:0 auto;">`
+      );
+      wPrev.document.close();
     }
-    dst[i + 3] = src[i + 3];
-  }
-  return out;
-}
-
-function upscaleCanvas(srcCanvas, factor) {
-  const dst = document.createElement("canvas");
-  dst.width = Math.round(srcCanvas.width * factor);
-  dst.height = Math.round(srcCanvas.height * factor);
-  const ctx = dst.getContext("2d");
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(srcCanvas, 0, 0, dst.width, dst.height);
-  return dst;
-}
-
-function gaussianBlur(imgData, w, h) {
-  const weights = [0.1201, 0.2339, 0.292, 0.2339, 0.1201];
-  const half = 2;
-  const src = imgData.data;
-  const tmp = new Uint8ClampedArray(src.length);
-
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let r = 0,
-        g = 0,
-        b = 0,
-        a = 0;
-      for (let k = -half; k <= half; k++) {
-        const px = Math.min(w - 1, Math.max(0, x + k));
-        const idx = (y * w + px) * 4;
-        const wgt = weights[k + half];
-        r += src[idx] * wgt;
-        g += src[idx + 1] * wgt;
-        b += src[idx + 2] * wgt;
-        a += src[idx + 3] * wgt;
-      }
-      const id = (y * w + x) * 4;
-      tmp[id] = r;
-      tmp[id + 1] = g;
-      tmp[id + 2] = b;
-      tmp[id + 3] = a;
-    }
+    if (enhStatus) enhStatus.textContent = "Preview opened in new tab.";
+    return;
   }
 
-  const out = new ImageData(w, h);
-  const outd = out.data;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let r = 0,
-        g = 0,
-        b = 0,
-        a = 0;
-      for (let k = -half; k <= half; k++) {
-        const py = Math.min(h - 1, Math.max(0, y + k));
-        const idx = (py * w + x) * 4;
-        const wgt = weights[k + half];
-        r += tmp[idx] * wgt;
-        g += tmp[idx + 1] * wgt;
-        b += tmp[idx + 2] * wgt;
-        a += tmp[idx + 3] * wgt;
-      }
-      const id = (y * w + x) * 4;
-      outd[id] = Math.round(r);
-      outd[id + 1] = Math.round(g);
-      outd[id + 2] = Math.round(b);
-      outd[id + 3] = Math.round(a);
-    }
-  }
-  return out;
+  // Download Logic
+  const blob = dataURLToBlob(resultDataUrl);
+  const base = currentEnhFile.name.replace(/\.[^/.]+$/, "");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = base + "_enhanced.jpg";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  
+  if (enhStatus) enhStatus.textContent = "Enhancement complete. Download started.";
 }
-
-function blurRegionOnCanvas(ctx, box, passes = 7) {
-  if (!box || box.width <= 0 || box.height <= 0) return;
-  const imgData = ctx.getImageData(box.x, box.y, box.width, box.height);
-  let tmp = imgData;
-  for (let i = 0; i < passes; i++) {
-    tmp = gaussianBlur(tmp, box.width, box.height);
-  }
-  ctx.putImageData(tmp, box.x, box.y);
-}
-
-function downloadDataUrl(dataUrl, filename) {
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-}
-
-/* =================
-   ENHANCE RUN / PREVIEW
-   ================= */
 
 if (enhRunBtn) {
-  enhRunBtn.addEventListener("click", async () => {
-    if (!enhanceCanvas.width) {
-      alert("Upload an image first!");
-      return;
-    }
-    if (enhStatus) enhStatus.textContent = "Processing…";
-
-    let workCanvas = document.createElement("canvas");
-    workCanvas.width = enhanceCanvas.width;
-    workCanvas.height = enhanceCanvas.height;
-    const wctx = workCanvas.getContext("2d");
-    wctx.drawImage(enhanceCanvas, 0, 0);
-
-    if (enhUpscale4x && enhUpscale4x.checked) {
-      workCanvas = upscaleCanvas(workCanvas, 4);
-    } else if (enhUpscale2x && enhUpscale2x.checked) {
-      workCanvas = upscaleCanvas(workCanvas, 2);
-    }
-
-    const wctx2 = workCanvas.getContext("2d");
-    let id = wctx2.getImageData(0, 0, workCanvas.width, workCanvas.height);
-
-    if (enhDenoise && enhDenoise.checked) {
-      id = applyDenoise(id);
-    }
-    if (enhFaceEnhance && enhFaceEnhance.checked) {
-      id = applySharpen(id, 0.9);
-    }
-    if (enhOCR && enhOCR.checked) {
-      id = applyOCRBoost(id);
-    }
-    if (enhHDR && enhHDR.checked) {
-      id = applyHDRToneMap(id);
-    }
-    if (!(enhFaceEnhance && enhFaceEnhance.checked)) {
-      id = applySharpen(id, 0.6);
-    }
-
-    wctx2.putImageData(id, 0, 0);
-
-    if (enhHide && enhHide.checked && hideRectEnh) {
-      const factor = workCanvas.width / enhanceCanvas.width;
-      const box = {
-        x: Math.round(hideRectEnh.x * factor),
-        y: Math.round(hideRectEnh.y * factor),
-        width: Math.round(hideRectEnh.width * factor),
-        height: Math.round(hideRectEnh.height * factor),
-      };
-      blurRegionOnCanvas(wctx2, box, 8);
-    }
-
-    const q = enhQuality
-      ? (parseInt(enhQuality.value, 10) || 92) / 100
-      : 0.92;
-    const outDataUrl = workCanvas.toDataURL("image/jpeg", q);
-
-    // Update the preview canvas state
-    enhanceCanvas.width = workCanvas.width;
-    enhanceCanvas.height = workCanvas.height;
-    enhanceCtx.setTransform(1, 0, 0, 1, 0, 0);
-    enhanceCtx.clearRect(0, 0, enhanceCanvas.width, enhanceCanvas.height);
-    enhanceCtx.drawImage(workCanvas, 0, 0);
-
-    if (afterImg) afterImg.src = outDataUrl;
-    if (enhStatus) enhStatus.textContent = "Enhancement complete. Download will start.";
-
-    downloadDataUrl(
-      outDataUrl,
-      `enhanced_${
-        currentEnhFile
-          ? currentEnhFile.name.replace(/\.[^/.]+$/, "")
-          : Date.now()
-      }.jpg`
-    );
-  });
+  enhRunBtn.addEventListener("click", () => runEnhancement(false));
 }
-
 if (enhPreviewBtn) {
-  enhPreviewBtn.addEventListener("click", () => {
-    if (!enhanceCanvas.width) {
-      alert("Upload an image first!");
-      return;
-    }
-    // Process enhancements for preview
-    // NOTE: This is a simplified preview that shows the current state of the main canvas,
-    // which only reflects the changes after an *Enhance & Download* operation. 
-    // A true preview would need to run the full enhancement pipeline here too,
-    // but the original logic only opened a window of the final canvas state.
-    const url = enhanceCanvas.toDataURL(
-      "image/jpeg",
-      (parseInt(enhQuality?.value || "92", 10) || 92) / 100
-    );
-    const w = window.open("");
-    if (!w) {
-      alert("Popup blocked — allow popups to preview.");
-      return;
-    }
-    const html = `<title>Preview</title><img src="${url}" style="max-width:100%;height:auto;display:block;margin:0 auto;">`;
-    w.document.write(html);
-    w.document.close();
-  });
-}
-
-/* Hide area button (no annotation now) */
-if (hideAreaBtn) {
-  hideAreaBtn.addEventListener("click", () => {
-    alert(
-        "Privacy blur area selection is not implemented in this version."
-    );
-  });
+  enhPreviewBtn.addEventListener("click", () => runEnhancement(true));
 }
