@@ -1,115 +1,111 @@
 /* ==========================================================
-   Meta Media Hub - script_v.js
-   Stable working version
-   - Auth
-   - Navigation
+   Meta Media Hub - script_v.js (STABLE BASELINE)
    - Smart Human Detection
-   - Manual Focus (ONLY when NO human)
-   - Center-Cover Resize
-   ========================================================== */
+   - Conditional Manual Focus
+   - Full Screen Preview
+   - Center-Cover Resize (No Stretch)
+========================================================== */
 
 const $ = id => document.getElementById(id);
 
 /* ====================
-   AUTH
+   AUTH + NAVIGATION
 ==================== */
-const pwModal   = $("pwModal");
-const pwInput   = $("pwInput");
-const pwBtn     = $("pwBtn");
-const pwMsg     = $("pwMsg");
-const statusText= $("statusText");
+const pwModal = $("pwModal");
+const pwInput = $("pwInput");
+const pwBtn = $("pwBtn");
+const pwMsg = $("pwMsg");
+const statusText = $("statusText");
 
-const AUTH_KEY  = "mm_auth_v3";
-const PASSWORD  = "Meta@123";
+const AUTH_KEY = "mm_auth_v3";
+const PASSWORD = "Meta@123";
 
 function saveAuth(v){ v ? localStorage.setItem(AUTH_KEY,"true") : localStorage.removeItem(AUTH_KEY); }
-function isAuthed(){ return localStorage.getItem(AUTH_KEY) === "true"; }
+function isAuthed(){ return localStorage.getItem(AUTH_KEY)==="true"; }
 
-function unlock(){
-  if(pwInput.value === PASSWORD){
-    saveAuth(true);
-    pwModal.style.display="none";
-    statusText.textContent="Unlocked";
-    showSection("home");
-  } else {
-    pwMsg.textContent="Incorrect password";
-  }
-}
-pwBtn.addEventListener("click", unlock);
-pwInput.addEventListener("keydown", e=>{ if(e.key==="Enter") unlock(); });
-
-if(isAuthed()){
-  pwModal.style.display="none";
-  statusText.textContent="Unlocked";
-  showSection("home");
-}
-
-/* ====================
-   NAVIGATION
-==================== */
 function showSection(name){
   ["home","imageSection","enhancerSection"].forEach(id=>{
-    const el=$(id);
-    if(el) el.style.display="none";
+    const el=$(id); if(el) el.style.display="none";
   });
   if(name==="home") $("home").style.display="flex";
   if(name==="resize") $("imageSection").style.display="block";
   if(name==="enhance") $("enhancerSection").style.display="block";
 }
 
-$("btnImage").onclick        = ()=> showSection("resize");
-$("btnEnhancer").onclick     = ()=> showSection("enhance");
-$("backHomeFromImage").onclick   = ()=> showSection("home");
-$("backHomeFromEnhancer").onclick= ()=> showSection("home");
+function unlock(){
+  if(pwInput.value===PASSWORD){
+    saveAuth(true);
+    pwModal.style.display="none";
+    statusText.textContent="Unlocked";
+    showSection("home");
+  } else pwMsg.textContent="Incorrect password";
+}
+pwBtn.onclick=unlock;
+pwInput.onkeydown=e=>{ if(e.key==="Enter") unlock(); };
+if(isAuthed()){ pwModal.style.display="none"; statusText.textContent="Unlocked"; showSection("home"); }
+
+$("btnImage").onclick=()=>showSection("resize");
+$("btnEnhancer").onclick=()=>showSection("enhance");
+$("backHomeFromImage").onclick=()=>showSection("home");
+$("backHomeFromEnhancer").onclick=()=>showSection("home");
 
 /* =========================
    IMAGE RESIZER + AI SCAN
 ========================= */
+let imageFiles=[];
+let imageDetectionMap={};
+let cocoModel=null;
+let hasHuman=false;
 
-let imageFiles = [];
-let imageDetectionMap = {};
-let cocoModel = null;
-let hasHuman = false;
+/* Manual Focus State */
+let manualFocusEnabled=false;
+let manualFocusPoint=null;
 
-/* ✅ Manual Focus State */
-let manualFocusEnabled = false;
-let manualFocusPoint = null;
+const dropImage=$("dropImage");
+const imageInput=$("imageInput");
+const imageFileList=$("imageFileList");
+const smartBanner=$("smartBanner");
+const bannerIcon=$("bannerIcon");
+const bannerText=$("bannerText");
+const imgStatus=$("imgStatus");
 
-const dropImage     = $("dropImage");
-const imageInput    = $("imageInput");
-const imageFileList = $("imageFileList");
-const smartBanner   = $("smartBanner");
-const bannerIcon    = $("bannerIcon");
-const bannerText    = $("bannerText");
-const imgStatus     = $("imgStatus");
+const imgWidth=$("imgWidth");
+const imgHeight=$("imgHeight");
+const imgQuality=$("imgQuality");
+const imgQualityVal=$("imgQualityVal");
+const imgPreviewBtn=$("imgPreviewBtn");
+const imgProcessBtn=$("imgProcessBtn");
+const focusBtn=$("focusBtn");
 
-const imgWidth      = $("imgWidth");
-const imgHeight     = $("imgHeight");
-const imgQuality    = $("imgQuality");
-const imgQualityVal = $("imgQualityVal");
-const imgPreviewBtn = $("imgPreviewBtn");
-const imgProcessBtn = $("imgProcessBtn");
-const focusBtn      = $("focusBtn");
+/* Preview Modal */
+const previewModal=$("previewModal");
+const closePreview=$("closePreview");
+const previewBefore=$("previewBefore");
+const previewAfter=$("previewAfter");
 
-dropImage.onclick = ()=> imageInput.click();
+if(closePreview) closePreview.onclick=()=>previewModal.style.display="none";
 
-imageInput.onchange = async e=>{
-  imageFiles = Array.from(e.target.files).filter(f=>f.type.startsWith("image/"));
+dropImage.onclick=()=>imageInput.click();
+imageInput.onchange=async e=>{
+  imageFiles=Array.from(e.target.files).filter(f=>f.type.startsWith("image/"));
   await handleNewImages();
 };
 
+/* ---- AI LOAD ---- */
 async function loadCoco(){
   if(!cocoModel){
-    imgStatus.textContent="Loading model…";
-    cocoModel = await cocoSsd.load();
+    imgStatus.textContent="Loading AI model…";
+    cocoModel=await cocoSsd.load();
   }
 }
+
 async function detectPerson(img){
   await loadCoco();
-  const preds = await cocoModel.detect(img);
+  const preds=await cocoModel.detect(img);
   return preds.some(p=>p.class==="person");
 }
 
+/* ---- HANDLE NEW IMAGES ---- */
 async function handleNewImages(){
   imageDetectionMap={};
   smartBanner.style.display="block";
@@ -120,33 +116,31 @@ async function handleNewImages(){
   let found=0;
 
   for(const file of imageFiles){
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.src=url; await img.decode();
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.src=url;
+    await img.decode();
 
-    const human = await detectPerson(img);
-    imageDetectionMap[file.name] = human ? "person" : "none";
+    const human=await detectPerson(img);
+    imageDetectionMap[file.name]=human?"person":"none";
     if(human) found++;
 
     URL.revokeObjectURL(url);
   }
 
-  hasHuman = found>0;
+  hasHuman=found>0;
+  bannerIcon.textContent=hasHuman?"🟢":"⚪";
+  bannerText.innerHTML=hasHuman?`Human found in ${found} image(s)`:`No humans detected`;
 
-  bannerIcon.textContent = hasHuman ? "🟢" : "⚪";
-  bannerText.innerHTML   = hasHuman
-    ? `Human detected in ${found} image(s)`
-    : "No human detected";
-
-  /* ✅ MANUAL FOCUS AUTO CONTROL */
+  /* ✅ Conditional Manual Focus */
   if(hasHuman){
-    focusBtn.disabled = true;
-    focusBtn.style.opacity = 0.4;
-    manualFocusEnabled = false;
-    manualFocusPoint = null;
+    focusBtn.disabled=true;
+    focusBtn.style.opacity=0.4;
+    manualFocusEnabled=false;
+    manualFocusPoint=null;
   } else {
-    focusBtn.disabled = false;
-    focusBtn.style.opacity = 1;
+    focusBtn.disabled=false;
+    focusBtn.style.opacity=1;
   }
 
   imgStatus.textContent="Scan complete.";
@@ -158,90 +152,116 @@ function refreshImageList(){
     imageFileList.textContent="No files uploaded.";
     return;
   }
-  imageFileList.innerHTML = imageFiles.map((f,i)=>{
-    const st = imageDetectionMap[f.name] || "unknown";
-    return `<div>${i+1}. ${f.name} — ${st}</div>`;
+  imageFileList.innerHTML=imageFiles.map((f,i)=>{
+    return `<div>${i+1}. ${f.name} — ${imageDetectionMap[f.name]}</div>`;
   }).join("");
 }
 
 /* =====================
-   MANUAL FOCUS (NO HUMAN ONLY)
+   MANUAL FOCUS
 ===================== */
-focusBtn.onclick = ()=>{
-  if(hasHuman){
-    alert("Manual Focus disabled (Human detected)");
-    return;
-  }
-  manualFocusEnabled = true;
-  alert("Now click anywhere on the screen to set focus point.");
+focusBtn.onclick=()=>{
+  if(hasHuman) return alert("Manual focus disabled. Human detected.");
+  manualFocusEnabled=true;
+  alert("Click anywhere on screen to set focus.");
 };
 
-document.addEventListener("click", e=>{
+document.addEventListener("click",e=>{
   if(!manualFocusEnabled) return;
-  manualFocusPoint = { x:e.clientX, y:e.clientY };
+  manualFocusPoint={ x:e.clientX, y:e.clientY };
   manualFocusEnabled=false;
   alert("Manual focus set.");
 });
 
 /* ======================
-   CENTER-COVER RESIZE
+   CENTER-COVER DRAW
 ====================== */
-imgQuality.oninput = ()=> imgQualityVal.textContent = imgQuality.value+"%";
+function drawCover(ctx,img,w,h){
+  const scale=Math.max(w/img.width,h/img.height);
+  const sw=img.width*scale;
+  const sh=img.height*scale;
 
-async function processImages(){
-  if(!imageFiles.length) return alert("Upload images first");
+  let ox=(w-sw)/2;
+  let oy=(h-sh)/2;
 
-  const tW = parseInt(imgWidth.value)||0;
-  const tH = parseInt(imgHeight.value)||0;
-  const q  = (parseInt(imgQuality.value)||90)/100;
+  if(!hasHuman && manualFocusPoint){
+    const fx=manualFocusPoint.x/window.innerWidth;
+    const fy=manualFocusPoint.y/window.innerHeight;
+    ox=w*(0.5-fx);
+    oy=h*(0.5-fy);
+  }
+
+  ctx.drawImage(img,ox,oy,sw,sh);
+}
+
+/* ======================
+   PREVIEW ONLY
+====================== */
+imgPreviewBtn.onclick=async ()=>{
+  if(!imageFiles.length) return alert("Upload images first.");
+
+  const file=imageFiles[0];
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  img.src=url;
+  await img.decode();
+
+  const w=parseInt(imgWidth.value)||img.width;
+  const h=parseInt(imgHeight.value)||img.height;
+
+  const canvas=document.createElement("canvas");
+  canvas.width=w;
+  canvas.height=h;
+  const ctx=canvas.getContext("2d");
+
+  drawCover(ctx,img,w,h);
+
+  previewBefore.src=url;
+  previewAfter.src=canvas.toDataURL("image/jpeg",0.9);
+  previewModal.style.display="flex";
+};
+
+/* ======================
+   PROCESS & DOWNLOAD ZIP
+====================== */
+imgProcessBtn.onclick=async ()=>{
+  if(!imageFiles.length) return alert("Upload images first.");
+
+  const q=(parseInt(imgQuality.value)||90)/100;
+  const zip=new JSZip();
 
   for(const file of imageFiles){
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.src=url; await img.decode();
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.src=url;
+    await img.decode();
 
-    const canvas = document.createElement("canvas");
-    canvas.width = tW || img.width;
-    canvas.height= tH || img.height;
-    const ctx = canvas.getContext("2d");
+    const w=parseInt(imgWidth.value)||img.width;
+    const h=parseInt(imgHeight.value)||img.height;
 
-    const scale = Math.max(
-      canvas.width  / img.width,
-      canvas.height / img.height
-    );
+    const canvas=document.createElement("canvas");
+    canvas.width=w;
+    canvas.height=h;
+    const ctx=canvas.getContext("2d");
 
-    const sw = img.width  * scale;
-    const sh = img.height * scale;
+    drawCover(ctx,img,w,h);
 
-    let ox = (canvas.width  - sw) / 2;
-    let oy = (canvas.height - sh) / 2;
-
-    /* ✅ APPLY MANUAL FOCUS ONLY IF NO HUMAN */
-    if(!hasHuman && manualFocusPoint){
-      const fx = manualFocusPoint.x / window.innerWidth;
-      const fy = manualFocusPoint.y / window.innerHeight;
-      ox = canvas.width  * (0.5 - fx);
-      oy = canvas.height * (0.5 - fy);
-    }
-
-    ctx.drawImage(img, ox, oy, sw, sh);
-
-    const out = canvas.toDataURL("image/jpeg", q);
-    download(out, file.name.replace(/\..+$/,"")+"_resized.jpg");
+    const blob=await (await fetch(canvas.toDataURL("image/jpeg",q))).blob();
+    zip.file(file.name.replace(/\.[^/.]+$/,"")+"_resized.jpg",blob);
 
     URL.revokeObjectURL(url);
   }
 
-  imgStatus.textContent="Done.";
-}
+  const zipBlob=await zip.generateAsync({type:"blob"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(zipBlob);
+  a.download="resized_images.zip";
+  a.click();
 
-imgProcessBtn.onclick = processImages;
-imgPreviewBtn.onclick = processImages;
+  imgStatus.textContent="Done. ZIP downloaded.";
+};
 
 /* ====================
-   UTILITY
+   QUALITY SLIDER
 ==================== */
-function download(url,name){
-  const a=document.createElement("a");
-  a.href=url; a.download=name; a.click();
-}
+imgQuality.oninput=()=>imgQualityVal.textContent=imgQuality.value+"%";
