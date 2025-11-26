@@ -1,6 +1,7 @@
 /* ==========================================================
    Meta Media Hub - script_v.js
-   (PREVIEW OK + SMART HUMAN OK + HUMAN PROTECTION ENABLED)
+   Preview OK + Smart Human OK + Human Protection OK
+   Conditional Manual Focus (ONLY when NO HUMAN)
 ========================================================== */
 
 const $ = (id) => document.getElementById(id);
@@ -48,9 +49,7 @@ function unlock() {
 }
 
 pwBtn.addEventListener("click", unlock);
-pwInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") unlock();
-});
+pwInput.addEventListener("keydown", e => { if (e.key === "Enter") unlock(); });
 
 if (isAuthed()) {
   pwModal.style.display = "none";
@@ -61,7 +60,6 @@ if (isAuthed()) {
 /* ====================
    NAVIGATION
 ==================== */
-
 $("btnImage").addEventListener("click", () => showSection("resize"));
 $("btnEnhancer").addEventListener("click", () => showSection("enhance"));
 $("backHomeFromImage").addEventListener("click", () => showSection("home"));
@@ -74,6 +72,7 @@ $("backHomeFromEnhancer").addEventListener("click", () => showSection("home"));
 let imageFiles = [];
 let cocoModel = null;
 let imageDetectionMap = {};
+let manualFocusPoint = null; // ✅ NEW
 
 const dropImage = $("dropImage");
 const imageInput = $("imageInput");
@@ -84,6 +83,7 @@ const imgQuality = $("imgQuality");
 const imgQualityVal = $("imgQualityVal");
 const imgPreviewBtn = $("imgPreviewBtn");
 const imgProcessBtn = $("imgProcessBtn");
+const focusBtn = $("focusBtn");
 const imgStatus = $("imgStatus");
 const imgProgress = $("imgProgress");
 
@@ -96,6 +96,7 @@ dropImage.addEventListener("click", () => imageInput.click());
 
 imageInput.addEventListener("change", async e => {
   imageFiles = Array.from(e.target.files).filter(f => f.type.startsWith("image/"));
+  manualFocusPoint = null; // reset
   await handleNewImages();
 });
 
@@ -177,7 +178,36 @@ async function handleNewImages() {
   imgStatus.textContent = "Scan complete.";
 }
 
-/* ===== RESIZE + PREVIEW (HUMAN SAFE) ===== */
+/* =========================
+   MANUAL FOCUS (CONDITIONAL)
+========================= */
+
+focusBtn.addEventListener("click", () => {
+  const anyHuman = imageFiles.some(f => imageDetectionMap[f.name] === "person");
+
+  if (anyHuman) {
+    alert("Manual Focus disabled because Human is detected.");
+    return;
+  }
+
+  alert("Click on Preview image to set focus point.");
+});
+
+const previewBefore = $("previewBefore");
+if (previewBefore) {
+  previewBefore.addEventListener("click", (e) => {
+    const rect = previewBefore.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+
+    manualFocusPoint = { x, y };
+    alert("Manual focus point set.");
+  });
+}
+
+/* =========================
+   RESIZE + PREVIEW (HUMAN SAFE)
+========================= */
 
 async function processImages(previewOnly = false) {
   if (!imageFiles.length) return alert("Upload images first");
@@ -204,13 +234,13 @@ async function processImages(previewOnly = false) {
 
     let scale;
     if (hasHuman) {
-      /* ✅ CONTAIN MODE — NEVER CUT HUMAN */
+      // ✅ CONTAIN (HUMAN SAFE)
       scale = Math.min(
         canvas.width / img.naturalWidth,
         canvas.height / img.naturalHeight
       );
     } else {
-      /* ✅ COVER MODE — NORMAL CENTER CROP */
+      // ✅ COVER (MANUAL FOCUS ENABLED)
       scale = Math.max(
         canvas.width / img.naturalWidth,
         canvas.height / img.naturalHeight
@@ -219,8 +249,15 @@ async function processImages(previewOnly = false) {
 
     const scaledW = img.naturalWidth * scale;
     const scaledH = img.naturalHeight * scale;
-    const offsetX = (canvas.width - scaledW) / 2;
-    const offsetY = (canvas.height - scaledH) / 2;
+
+    let offsetX = (canvas.width - scaledW) / 2;
+    let offsetY = (canvas.height - scaledH) / 2;
+
+    // ✅ APPLY MANUAL FOCUS ONLY IF NO HUMAN
+    if (!hasHuman && manualFocusPoint) {
+      offsetX = canvas.width / 2 - scaledW * manualFocusPoint.x;
+      offsetY = canvas.height / 2 - scaledH * manualFocusPoint.y;
+    }
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
@@ -229,8 +266,8 @@ async function processImages(previewOnly = false) {
 
     if (previewOnly) {
       previewBefore.src = url;
-      previewAfter.src = dataUrl;
-      previewModal.classList.add("active");
+      $("previewAfter").src = dataUrl;
+      $("previewModal").classList.add("active");
       imgStatus.textContent = "Preview opened.";
       return;
     }
@@ -259,52 +296,14 @@ function dataURLToBlob(dataUrl) {
 }
 
 /* ============================
-   AI ENHANCER PREVIEW (UNCHANGED)
-============================ */
-
-const enhanceCanvas = document.createElement("canvas");
-const enhanceCtx = enhanceCanvas.getContext("2d");
-let lastEnhanceUrl = null;
-
-const dropEnhance = $("dropEnhance");
-const enhanceInput = $("enhanceInput");
-const enhPreviewBtn = $("enhPreviewBtn");
-
-dropEnhance.addEventListener("click", () => enhanceInput.click());
-
-enhanceInput.addEventListener("change", async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.src = url;
-  await img.decode();
-  enhanceCanvas.width = img.width;
-  enhanceCanvas.height = img.height;
-  enhanceCtx.drawImage(img, 0, 0);
-  lastEnhanceUrl = url;
-});
-
-enhPreviewBtn.addEventListener("click", () => {
-  if (!enhanceCanvas.width) return alert("Upload image first");
-  previewBefore.src = lastEnhanceUrl;
-  previewAfter.src = enhanceCanvas.toDataURL("image/jpeg", 0.92);
-  previewModal.classList.add("active");
-});
-
-/* ============================
    FULLSCREEN PREVIEW MODAL
 ============================ */
 
 const previewModal = $("previewModal");
-const previewBefore = $("previewBefore");
 const previewAfter = $("previewAfter");
 const closePreview = $("closePreview");
 
-closePreview.addEventListener("click", () => {
-  previewModal.classList.remove("active");
-});
+closePreview.addEventListener("click", () => previewModal.classList.remove("active"));
 previewModal.addEventListener("click", e => {
-  if (e.target === previewModal)
-    previewModal.classList.remove("active");
+  if (e.target === previewModal) previewModal.classList.remove("active");
 });
