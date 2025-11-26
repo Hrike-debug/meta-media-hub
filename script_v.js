@@ -63,7 +63,9 @@ if (isAuthed()) {
 /* ---------------------------------------------------------
    NAVIGATION
 --------------------------------------------------------- */
-on($("btnImage"), "click", ()=> alert("Image Tools is disabled in this version."));
+on($("btnImage"), "click", ()=>{
+  alert("Image Tools module coming next.");
+});
 on($("btnEnhancer"), "click", ()=> showSection("enhance"));
 on($("backHomeFromEnhancer"), "click", ()=> showSection("home"));
 
@@ -568,3 +570,4 @@ on($("annotClear"), "click", ()=>{
   redrawInline();
   redrawModalCanvas();
 });
+
