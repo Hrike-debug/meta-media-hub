@@ -63,7 +63,15 @@ h1 { margin:0; font-size:18px; }
 .section-header h2 { margin:0; }
 .subtitle { color:var(--muted); font-size:14px; margin-top:4px; }
 .back-btn { background:transparent; border:1px solid var(--border); padding:8px 14px; border-radius:999px; color:var(--text); cursor:pointer; font-size:13px; }
-.panel { background: radial-gradient(circle at top left, rgba(255,122,60,0.16), transparent 60%), var(--panel); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:18px; box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+.panel { 
+  background: radial-gradient(circle at top left, rgba(255,122,60,0.16), transparent 60%), var(--panel); 
+  border:1px solid rgba(255,255,255,0.06); 
+  border-radius:16px; 
+  padding:18px; 
+  box-shadow:0 20px 60px rgba(0,0,0,0.6); 
+  position: relative;                /* ✅ allows proper z-index stacking */
+}
+
 
 .two-input { display:flex; gap:10px; margin:12px 0; }
 .input { width:100%; padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--text); box-sizing:border-box; }
