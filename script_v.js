@@ -1,15 +1,11 @@
 /* ==========================================================
-   Meta Media Hub - script_v.js (STABLE BASELINE)
-   - Smart Human Detection
-   - Conditional Manual Focus
-   - Full Screen Preview
-   - Center-Cover Resize (No Stretch)
+   Meta Media Hub - script_v.js (STABLE + MANUAL FOCUS BOX)
 ========================================================== */
 
 const $ = id => document.getElementById(id);
 
 /* ====================
-   AUTH + NAVIGATION
+   AUTH + NAVIGATION (UNCHANGED)
 ==================== */
 const pwModal = $("pwModal");
 const pwInput = $("pwInput");
@@ -50,16 +46,16 @@ $("backHomeFromImage").onclick=()=>showSection("home");
 $("backHomeFromEnhancer").onclick=()=>showSection("home");
 
 /* =========================
-   IMAGE RESIZER + AI SCAN
+   IMAGE RESIZER + AI SCAN (UNCHANGED)
 ========================= */
 let imageFiles=[];
 let imageDetectionMap={};
 let cocoModel=null;
 let hasHuman=false;
 
-/* Manual Focus State */
+/* ✅ Manual Focus Box State */
 let manualFocusEnabled=false;
-let manualFocusPoint=null;
+let manualFocusBox=null;
 
 const dropImage=$("dropImage");
 const imageInput=$("imageInput");
@@ -77,11 +73,16 @@ const imgPreviewBtn=$("imgPreviewBtn");
 const imgProcessBtn=$("imgProcessBtn");
 const focusBtn=$("focusBtn");
 
-/* Preview Modal */
+/* ================= PREVIEW MODAL ================= */
 const previewModal=$("previewModal");
 const closePreview=$("closePreview");
 const previewBefore=$("previewBefore");
 const previewAfter=$("previewAfter");
+const previewContainer=document.querySelector(".preview-container");
+
+let focusBoxEl=document.createElement("div");
+focusBoxEl.className="focus-box";
+previewContainer.appendChild(focusBoxEl);
 
 if(closePreview) closePreview.onclick=()=>previewModal.style.display="none";
 
@@ -91,7 +92,7 @@ imageInput.onchange=async e=>{
   await handleNewImages();
 };
 
-/* ---- AI LOAD ---- */
+/* ---- AI MODEL ---- */
 async function loadCoco(){
   if(!cocoModel){
     imgStatus.textContent="Loading AI model…";
@@ -132,13 +133,13 @@ async function handleNewImages(){
   bannerIcon.textContent=hasHuman?"🟢":"⚪";
   bannerText.innerHTML=hasHuman?`Human found in ${found} image(s)`:`No humans detected`;
 
-  /* ✅ Conditional Manual Focus */
+  /* ✅ AUTO MANUAL FOCUS DISABLE WHEN HUMAN */
   if(hasHuman){
     focusBtn.disabled=true;
     focusBtn.style.opacity=0.4;
-    manualFocusEnabled=false;
-    manualFocusPoint=null;
-  } else {
+    manualFocusBox=null;
+    focusBoxEl.style.display="none";
+  }else{
     focusBtn.disabled=false;
     focusBtn.style.opacity=1;
   }
@@ -158,35 +159,59 @@ function refreshImageList(){
 }
 
 /* =====================
-   MANUAL FOCUS
+   ✅ MANUAL FOCUS DRAW
 ===================== */
+let drawStart=null;
+
 focusBtn.onclick=()=>{
   if(hasHuman) return alert("Manual focus disabled. Human detected.");
   manualFocusEnabled=true;
-  alert("Click anywhere on screen to set focus.");
+  alert("Drag on preview AFTER image to select focus area.");
 };
 
-document.addEventListener("click",e=>{
-  if(!manualFocusEnabled) return;
-  manualFocusPoint={ x:e.clientX, y:e.clientY };
+previewContainer.addEventListener("mousedown",e=>{
+  if(!manualFocusEnabled || hasHuman) return;
+  drawStart={x:e.offsetX,y:e.offsetY};
+  focusBoxEl.style.left=drawStart.x+"px";
+  focusBoxEl.style.top=drawStart.y+"px";
+  focusBoxEl.style.width="0px";
+  focusBoxEl.style.height="0px";
+  focusBoxEl.style.display="block";
+});
+
+previewContainer.addEventListener("mousemove",e=>{
+  if(!drawStart) return;
+  const w=e.offsetX-drawStart.x;
+  const h=e.offsetY-drawStart.y;
+  focusBoxEl.style.width=w+"px";
+  focusBoxEl.style.height=h+"px";
+});
+
+document.addEventListener("mouseup",()=>{
+  if(!drawStart) return;
+  manualFocusBox={
+    x:parseInt(focusBoxEl.style.left),
+    y:parseInt(focusBoxEl.style.top),
+    width:parseInt(focusBoxEl.style.width),
+    height:parseInt(focusBoxEl.style.height)
+  };
+  drawStart=null;
   manualFocusEnabled=false;
-  alert("Manual focus set.");
 });
 
 /* ======================
-   CENTER-COVER DRAW
+   CENTER-COVER DRAW (SAFE BIAS)
 ====================== */
 function drawCover(ctx,img,w,h){
   const scale=Math.max(w/img.width,h/img.height);
   const sw=img.width*scale;
   const sh=img.height*scale;
-
   let ox=(w-sw)/2;
   let oy=(h-sh)/2;
 
-  if(!hasHuman && manualFocusPoint){
-    const fx=manualFocusPoint.x/window.innerWidth;
-    const fy=manualFocusPoint.y/window.innerHeight;
+  if(manualFocusBox && !hasHuman){
+    const fx=(manualFocusBox.x+manualFocusBox.width/2)/previewContainer.clientWidth;
+    const fy=(manualFocusBox.y+manualFocusBox.height/2)/previewContainer.clientHeight;
     ox=w*(0.5-fx);
     oy=h*(0.5-fy);
   }
@@ -195,11 +220,10 @@ function drawCover(ctx,img,w,h){
 }
 
 /* ======================
-   PREVIEW ONLY
+   PREVIEW (UNCHANGED)
 ====================== */
 imgPreviewBtn.onclick=async ()=>{
   if(!imageFiles.length) return alert("Upload images first.");
-
   const file=imageFiles[0];
   const img=new Image();
   const url=URL.createObjectURL(file);
@@ -222,7 +246,7 @@ imgPreviewBtn.onclick=async ()=>{
 };
 
 /* ======================
-   PROCESS & DOWNLOAD ZIP
+   PROCESS & DOWNLOAD ZIP (UNCHANGED)
 ====================== */
 imgProcessBtn.onclick=async ()=>{
   if(!imageFiles.length) return alert("Upload images first.");
@@ -261,7 +285,4 @@ imgProcessBtn.onclick=async ()=>{
   imgStatus.textContent="Done. ZIP downloaded.";
 };
 
-/* ====================
-   QUALITY SLIDER
-==================== */
 imgQuality.oninput=()=>imgQualityVal.textContent=imgQuality.value+"%";
