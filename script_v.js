@@ -37,11 +37,15 @@
 
   /* --------- NAV / UI wiring --------- */
   function showSection(name){
-    const home = $("home"), enh = $("enhancerSection");
-    if(home) home.style.display = (name === "home") ? "flex" : "none";
-    if(enh) enh.style.display = (name === "enhance") ? "block" : "none";
-  }
-  on($("btnImage"), "click", ()=> alert("Image Tools disabled in this build."));
+    const btnImage = document.getElementById("btnImage");
+
+if (btnImage) {
+  btnImage.onclick = () => {
+    // Image Tools now enabled (no popup)
+    console.log("Image Tools clicked");
+  };
+}
+
   on($("btnEnhancer"), "click", ()=> showSection("enhance"));
   on($("backHomeFromEnhancer"), "click", ()=> showSection("home"));
   on($("aboutBtn"), "click", ()=> { const m = $("aboutModal"); if(m) m.style.display = "flex"; });
@@ -618,4 +622,5 @@
   setTimeout(() => { ensureModalCanvasSize(); ensureSplitAnnotCanvasSize(); refreshSplit(); }, 80);
 
 })();
+
 
